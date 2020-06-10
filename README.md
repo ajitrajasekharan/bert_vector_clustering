@@ -36,6 +36,16 @@ debug_pivots.txt - output of run.sh with option 2
 labels.txt and stats_dict.txt - output of running extract_labels.sh
 
 
+# Steps to run this as a service for downstream unsupervised NER
+
+./run_dist_v2_server.sh 
+
+To test this service 
+
+- wget -O out http://127.0.0.1:8043/"cat dog cow horse"
+
+- cat out
+  BIO-SPECIES BIO-SPECIES BIO-SPECIES BIO BIO BIO BIO BIO BIO BIO
 
 
 # License
