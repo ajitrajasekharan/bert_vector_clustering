@@ -10,7 +10,7 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 *Step 1a:*
 	Fetch a model and its vocab file using fetch_model.sh
 	./fetch_model.sh
-	This will download bert_large_cased and its vocab
+	This will download bert_large_cased and its vocab for testing. *Refer to huggingface model repositories for other model URLs.*
 
 *Step 1b:*
 	Extract vectors from the model
