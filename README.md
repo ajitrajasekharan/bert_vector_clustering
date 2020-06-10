@@ -25,7 +25,9 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 
 Additionally run.sh (dist_v2.py)  has options to look at cumulative distribution of a model's words, find pivot among a set of terms, entity labeling,  etc.
 
-# Output of clustering using bert_large_cased are in results directory
+# Sample Outputs
+
+Output of clustering using bert_large_cased are in results directory
 
 
 # License
