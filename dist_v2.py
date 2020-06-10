@@ -45,7 +45,7 @@ def read_labels(labels_file):
             else:
                 print("Invalid line:",term)
                 assert(0)
-    print("count of labels:", len(terms_dict))
+    print("count of labels in " + labels_file + ":", len(terms_dict))
     return terms_dict
 
 
