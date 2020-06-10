@@ -15,7 +15,7 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 	
 	This will download bert_large_cased and its vocab for testing.
 	
-	*Refer to huggingface model repositories for other model URLs.*
+	** Refer to huggingface model repositories for other model URLs. **
 
 **Step 1b:**
 	Extract vectors from the model
