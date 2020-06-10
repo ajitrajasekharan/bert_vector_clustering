@@ -10,11 +10,14 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 
 **Step 1a:**
 	Fetch a model and its vocab file using fetch_model.sh
+	
 	./fetch_model.sh
+	
 	This will download bert_large_cased and its vocab for testing. *Refer to huggingface model repositories for other model URLs.*
 
 **Step 1b:**
 	Extract vectors from the model
+	
 	python examine_model.py 2 > bert_vectors.txt	
 
 **Step 1c:** Execute run.sh and then choose option 1 to create cluster file debug_pivots.txt
