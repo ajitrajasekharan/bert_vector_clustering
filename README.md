@@ -33,7 +33,7 @@ to combine user defined labels in map_labels.txt and debug_pivots.txt.
 
 Additionally 
 
-./run.sh (dist_v2.py)  
+./run.sh 
 
 has options to look at cumulative distribution of a model's words, find pivot among a set of terms, entity labeling,  etc.
 
