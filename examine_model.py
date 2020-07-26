@@ -33,7 +33,7 @@ if __name__ == "__main__":
 		else:
 			model_name = default_model_name
 		if (len(sys.argv) > 3):
-			key_name = sys.argv[2]	
+			key_name = sys.argv[3]	
 		else:
 			key_name = default_dump_key
 		examine(int(sys.argv[1]),model_name,key_name)
