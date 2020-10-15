@@ -6,7 +6,7 @@ import subprocess
 import numpy as  np
 import json
 import math
-from pytorch_transformers import *
+from transformers import *
 import sys
 
 
