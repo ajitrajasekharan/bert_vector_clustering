@@ -196,7 +196,10 @@ class BertEmbeds:
         if (tokenize):
             tokenized_text = self.tokenizer.tokenize(text)
         else:
-            tokenized_text = text.split()
+            if (not text.startswith('[')): 
+               tokenized_text = text.split()
+            else:
+               tokenized_text = [text]
         indexed_tokens = self.tokenizer.convert_tokens_to_ids(tokenized_text)
         #print(text,indexed_tokens)
         vec =  self.get_vector(indexed_tokens)
