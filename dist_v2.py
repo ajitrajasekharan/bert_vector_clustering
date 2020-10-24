@@ -157,11 +157,11 @@ class BertEmbeds:
 
 
     def gen_dist_for_vocabs(self):
-        print("Random pick? Y/n:")
+        print("Random pick? (Full run will tak approximately 3 hours) Y/n:")
         resp = input()
         is_rand = (resp == "Y") 
         if (is_rand):
-            print("Sampling run")
+            print("Sampling run:")
         count = 1
         picked_count = 0
         skip_count = 0
@@ -517,7 +517,7 @@ def main():
         b_embeds =BertEmbeds(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],True,True,sys.argv[6],sys.argv[7],sys.argv[8],sys.argv[9]) #True - for cache embeds; normalize - True
         display_threshold = .4
         while (True):
-            print("Enter test type (0-gen cum dist for vocabs (will take approx 3 hours); 1-generate clusters (will take approx 2 hours);  2-neigh/3-pivot graph/4-bipartite/5-Entity test: q to quit")
+            print("Enter test type (0-gen cum dist for vocabs; 1-generate clusters (will take approx 2 hours);  2-neigh/3-pivot graph/4-bipartite/5-Entity test: q to quit")
             val = input()
             if (val == "0"):
                 b_embeds.gen_dist_for_vocabs()
