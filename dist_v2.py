@@ -6,8 +6,9 @@ import subprocess
 import numpy as  np
 import json
 import math
-from pytorch_transformers import *
+from transformers import *
 import sys
+import random
 
 
 SINGLETONS_TAG  = "_singletons_ "
@@ -156,14 +157,26 @@ class BertEmbeds:
 
 
     def gen_dist_for_vocabs(self):
+        print("Random pick? Y/n:")
+        resp = input()
+        is_rand = (resp == "Y") 
+        if (is_rand):
+            print("Sampling run")
         count = 1
         picked_count = 0
+        skip_count = 0
         cum_dict = OrderedDict()
         cum_dict_count = OrderedDict()
         for key in self.terms_dict:
             if (is_filtered_term(key) or count <= BERT_TERMS_START):
                 count += 1
                 continue
+            if (is_rand):
+                val = random.randint(0,100)
+                if (val < 97): # this is a biased skip to do a fast cum dist check (3% sample ~ 1000)
+                    skip_count+= 1
+                    print("Processed:",picked_count,"Skipped:",skip_count,end='\r')
+                    continue
             #print(":",key)
             picked_count += 1
             sorted_d = self.get_distribution_for_term(key,False)
@@ -179,7 +192,7 @@ class BertEmbeds:
         for k in cum_dict:
             cum_dict[k] = float(cum_dict[k])/cum_dict_count[k]
         final_sorted_d = OrderedDict(sorted(cum_dict.items(), key=lambda kv: kv[0], reverse=False))
-        print("Total picked:",picked_count)
+        print("\nTotal picked:",picked_count)
         with open("cum_dist.txt","w") as fp:
             fp.write("Total picked:" + str(picked_count) + "\n")
             for k in final_sorted_d:
