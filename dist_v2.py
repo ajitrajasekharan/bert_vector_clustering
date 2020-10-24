@@ -190,7 +190,7 @@ class BertEmbeds:
                     cum_dict[val] = sorted_d[k]
                     cum_dict_count[val] = 1
         for k in cum_dict:
-            cum_dict[k] = float(cum_dict[k])/cum_dict_count[k]
+            cum_dict[k] = round(float(cum_dict[k])/cum_dict_count[k],0)
         final_sorted_d = OrderedDict(sorted(cum_dict.items(), key=lambda kv: kv[0], reverse=False))
         print("\nTotal picked:",picked_count)
         with open("cum_dist.txt","w") as fp:
