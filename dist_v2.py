@@ -167,6 +167,7 @@ class BertEmbeds:
         skip_count = 0
         cum_dict = OrderedDict()
         cum_dict_count = OrderedDict()
+        zero_dict = OrderedDict()
         for key in self.terms_dict:
             if (is_filtered_term(key) or count <= BERT_TERMS_START):
                 count += 1
@@ -183,6 +184,8 @@ class BertEmbeds:
             for k in sorted_d:
                 val = round(float(k),1)
                 #print(str(val)+","+str(sorted_d[k]))
+                if (val == 0):
+                    zero_dict[key] = sorted_d[k]
                 if (val in cum_dict):
                     cum_dict[val] += sorted_d[k]
                     cum_dict_count[val] += 1
@@ -199,6 +202,14 @@ class BertEmbeds:
                 print(k,final_sorted_d[k])
                 p_str = str(k) + " " +  str(final_sorted_d[k]) + "\n"
                 fp.write(p_str)
+
+        with open("zero_vec_counts.txt","w") as fp:
+            fp.write("Total picked:" + str(picked_count) + "\n")
+            for k in zero_dict:
+                print(k,zero_dict[k])
+                p_str = str(k) + " " +  str(zero_dict[k]) + "\n"
+                fp.write(p_str)
+
 
 
 
