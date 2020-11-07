@@ -205,9 +205,10 @@ class BertEmbeds:
 
         with open("zero_vec_counts.txt","w") as fp:
             fp.write("Total picked:" + str(picked_count) + "\n")
-            for k in zero_dict:
-                print(k,zero_dict[k])
-                p_str = str(k) + " " +  str(zero_dict[k]) + "\n"
+            final_sorted_d = OrderedDict(sorted(zero_dict.items(), key=lambda kv: kv[1], reverse=True))
+            for k in final_sorted_d:
+                print(k,final_sorted_d[k])
+                p_str = str(k) + " " +  str(final_sorted_d[k]) + "\n"
                 fp.write(p_str)
 
 
