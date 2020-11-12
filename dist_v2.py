@@ -88,6 +88,7 @@ class BertEmbeds:
         self.embeds_cache = {}
         self.cosine_cache = {}
         self.dist_threshold_cache = {}
+        self.dist_zero_cache = {}
         self.normalize = normalize
 
     def dump_vocab(self):
@@ -180,7 +181,7 @@ class BertEmbeds:
                     continue
             #print(":",key)
             picked_count += 1
-            sorted_d = self.get_distribution_for_term(key,False)
+            sorted_d,dummy = self.get_distribution_for_term(key,False)
             for k in sorted_d:
                 val = round(float(k),1)
                 #print(str(val)+","+str(sorted_d[k]))
@@ -274,10 +275,11 @@ class BertEmbeds:
         hack_check = False
 
         if (term1 in self.dist_threshold_cache):
-            return self.dist_threshold_cache[term1]
+            return self.dist_threshold_cache[term1],self.dist_zero_cache
         terms_count = self.terms_dict
         dist_dict = {}
         val_dict = {}
+        zero_dict = {}
         if (hack_check and debug_fp is None):
             debug_fp = open("debug.txt","w")
         for k in self.terms_dict:
@@ -295,9 +297,13 @@ class BertEmbeds:
                 dist_dict[val] += 1
             else:
                 dist_dict[val] = 1
+            val = round(val,1)
+            if (val >= -.05 and val <= .05):
+                zero_dict[term2] = 0
         sorted_d = OrderedDict(sorted(dist_dict.items(), key=lambda kv: kv[0], reverse=False))
         self.dist_threshold_cache[term1] = sorted_d
-        return sorted_d
+        self.dist_zero_cache = zero_dict
+        return sorted_d,zero_dict
 
     def get_terms_above_threshold(self,term1,threshold,tokenize):
         final_dict = {}
@@ -475,7 +481,7 @@ def neigh_test(b_embeds,tokenize):
         if (tokenize):
             tokenized_text = b_embeds.tokenizer.tokenize(word)
             print("Tokenized text:", tokenized_text)
-        sorted_d = b_embeds.get_distribution_for_term(word,tokenize)
+        sorted_d,zero_dict = b_embeds.get_distribution_for_term(word,tokenize)
         for k in sorted_d:
             print(str(k)+","+str(sorted_d[k]))
         if (tokenize):
@@ -484,6 +490,10 @@ def neigh_test(b_embeds,tokenize):
             indexed_tokens = b_embeds.tokenizer.convert_tokens_to_ids(word)
             if (indexed_tokens == UNK_ID):
                 print("Warning! This is not a token in vocab. Distribution is for UNK token")
+        fp = open(word +"_zero.txt","w")
+        for term in zero_dict:
+            fp.write(term + '\n')
+        fp.close()
         threshold = pick_threshold()
         b_embeds.print_terms_above_threshold(word,threshold,tokenize)
 
