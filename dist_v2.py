@@ -15,9 +15,11 @@ SINGLETONS_TAG  = "_singletons_ "
 EMPTY_TAG = "_empty_ "
 OTHER_TAG = "OTHER"
 AMBIGUOUS = "AMB"
+MAX_VAL = 20
+TAIL_THRESH = 10
 
 BERT_TERMS_START=106
-UNK_ID = 100
+UNK_ID = 1
 #Original setting for cluster generation. 
 OLD_FORM=True
 
@@ -154,11 +156,27 @@ class BertEmbeds:
             fp.write(json.dumps(pivots_dict))
         dfp.close()
 
+    def get_tail_length(self,key,sorted_d):
+        rev_sorted_d = OrderedDict(sorted(sorted_d.items(), key=lambda kv: kv[0], reverse=True))
+        prev_val = 0
+        count = 0
+        for k in rev_sorted_d:
+            if (rev_sorted_d[k] >= MAX_VAL):
+                   if (prev_val >= TAIL_THRESH):
+                        count -= prev_val
+                   break
+            if (rev_sorted_d[k] >= TAIL_THRESH and prev_val >= TAIL_THRESH):
+                   count -= prev_val
+                   break
+            prev_val = rev_sorted_d[k]
+            count += rev_sorted_d[k]
+        return count
 
+        
 
 
     def gen_dist_for_vocabs(self):
-        print("Random pick? (Full run will tak approximately 3 hours) Y/n:")
+        print("Random pick? (Full run will take approximately 3 hours) Y/n:")
         resp = input()
         is_rand = (resp == "Y") 
         if (is_rand):
@@ -169,6 +187,8 @@ class BertEmbeds:
         cum_dict = OrderedDict()
         cum_dict_count = OrderedDict()
         zero_dict = OrderedDict()
+        tail_lengths = OrderedDict()
+        total_tail_length = 0
         for key in self.terms_dict:
             if (is_filtered_term(key) or count <= BERT_TERMS_START):
                 count += 1
@@ -182,6 +202,9 @@ class BertEmbeds:
             #print(":",key)
             picked_count += 1
             sorted_d,dummy = self.get_distribution_for_term(key,False)
+            tail_len = self.get_tail_length(key,sorted_d)
+            tail_lengths[key] = tail_len
+            total_tail_length += tail_len
             for k in sorted_d:
                 val = round(float(k),1)
                 #print(str(val)+","+str(sorted_d[k]))
@@ -212,7 +235,13 @@ class BertEmbeds:
                 p_str = str(k) + " " +  str(final_sorted_d[k]) + "\n"
                 fp.write(p_str)
 
-
+        with open("tail_counts.txt","w") as fp:
+            fp.write("Total picked:" + str(picked_count) + " Average tail len: " + str(round(float(total_tail_length)/picked_count,1)) +  "\n")
+            final_sorted_d = OrderedDict(sorted(tail_lengths.items(), key=lambda kv: kv[1], reverse=True))
+            for k in final_sorted_d:
+                print(k,final_sorted_d[k])
+                p_str = str(k) + " " +  str(final_sorted_d[k]) + "\n"
+                fp.write(p_str)
 
 
 
