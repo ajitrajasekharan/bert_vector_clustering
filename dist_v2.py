@@ -101,7 +101,61 @@ class BertEmbeds:
             print(names[0])
 
 
-    def gen_pivot_graphs(self,threshold,count_limit):
+    def adaptive_gen_pivot_graphs(self):
+        tokenize = False
+        count = 1
+        total = len(self.terms_dict)
+        picked_dict = OrderedDict()
+        pivots_dict = OrderedDict()
+        singletons_arr = []
+        empty_arr = []
+        total = len(self.terms_dict)
+        dfp = open("adapative_debug_pivots.txt","w")
+        for key in self.terms_dict:
+            if (is_filtered_term(key) or count <= BERT_TERMS_START):
+                count += 1
+                continue
+            count += 1
+            #print(":",key)
+            if (key in picked_dict or len(key) <= 2):
+                continue
+            print("Processing ",count," of ",total)
+            picked_dict[key] = 1
+            temp_sorted_d,dummy = self.get_distribution_for_term(key,False)
+            dummy,threshold = self.get_tail_length(key,temp_sorted_d)
+            sorted_d = self.get_terms_above_threshold(key,threshold,tokenize)
+            arr = []
+            for k in sorted_d:
+                if (is_filtered_term(k) or filter_2g(k,self.preserve_dict)):
+                    picked_dict[k] = 1
+                    continue
+                picked_dict[k] = 1
+                arr.append(k)
+            if (len(arr) > 1):
+                max_mean_term,max_mean, std_dev,s_dict = self.find_pivot_subgraph(arr,tokenize)
+                if (max_mean_term not in pivots_dict):
+                    new_key  = max_mean_term
+                else:
+                    print("****Term already a pivot node:",max_mean_term, "key  is :",key)
+                    new_key  = max_mean_term + "++" + key
+                pivots_dict[new_key] = {"key":new_key,"orig":key,"mean":max_mean,"terms":arr}
+                print(new_key,max_mean,std_dev,arr)
+                dfp.write(new_key + " " + new_key + " " + new_key+" "+key+" "+str(max_mean)+" "+ str(std_dev) + " " +str(arr)+"\n")
+            else:
+                if (len(arr) == 1):
+                    print("***Singleton arr for term:",key)
+                    singletons_arr.append(key)
+                else:
+                    print("***Empty arr for term:",key)
+                    empty_arr.append(key)
+
+        dfp.write(SINGLETONS_TAG + str(singletons_arr) + "\n")
+        dfp.write(EMPTY_TAG + str(empty_arr) + "\n")
+        with open("pivots.json","w") as fp:
+            fp.write(json.dumps(pivots_dict))
+        dfp.close()
+
+    def fixed_gen_pivot_graphs(self,threshold,count_limit):
         tokenize = False
         count = 1
         total = len(self.terms_dict)
@@ -156,21 +210,29 @@ class BertEmbeds:
             fp.write(json.dumps(pivots_dict))
         dfp.close()
 
+
     def get_tail_length(self,key,sorted_d):
         rev_sorted_d = OrderedDict(sorted(sorted_d.items(), key=lambda kv: kv[0], reverse=True))
         prev_val = 0
+        prev_cosine_val = 0
         count = 0
+        cosine_val = 0
         for k in rev_sorted_d:
             if (rev_sorted_d[k] >= MAX_VAL):
                    if (prev_val >= TAIL_THRESH):
                         count -= prev_val
+                        cosine_val = prev_cosine_val
+                   else:
+                        cosine_val = k
                    break
             if (rev_sorted_d[k] >= TAIL_THRESH and prev_val >= TAIL_THRESH):
                    count -= prev_val
+                   cosine_val = prev_cosine_val
                    break
             prev_val = rev_sorted_d[k]
+            prev_cosine_val = k
             count += rev_sorted_d[k]
-        return count
+        return count,cosine_val
 
         
 
@@ -202,7 +264,7 @@ class BertEmbeds:
             #print(":",key)
             picked_count += 1
             sorted_d,dummy = self.get_distribution_for_term(key,False)
-            tail_len = self.get_tail_length(key,sorted_d)
+            tail_len,dummy = self.get_tail_length(key,sorted_d)
             tail_lengths[key] = tail_len
             total_tail_length += tail_len
             for k in sorted_d:
@@ -577,15 +639,19 @@ def main():
                 b_embeds.gen_dist_for_vocabs()
                 sys.exit(-1)
             elif (val == "1"):
-                print("Enter Input threshold .5  works well for both pretraining and fine tuned")
+                print("Enter Input threshold .5  works well for both pretraining and fine tuned. Enter 0 for adaptive thresholding")
                 val = .5
                 tail = 10
                 try:
                     val = float(input())
                 except:
                     val = .5
-                print("Using value: ",val)
-                b_embeds.gen_pivot_graphs(val,tail)
+                if (val != 0):
+                        print("Using value for fixed thresholding: ",val)
+                        b_embeds.fixed_gen_pivot_graphs(val,tail)
+                else:
+                        print("Performing adaptive thresholding")
+                        b_embeds.adaptive_gen_pivot_graphs()
                 sys.exit(-1)
             elif (val == "2"):
                 neigh_test(b_embeds,tokenize)
