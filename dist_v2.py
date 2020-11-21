@@ -110,7 +110,7 @@ class BertEmbeds:
         singletons_arr = []
         empty_arr = []
         total = len(self.terms_dict)
-        dfp = open("adapative_debug_pivots.txt","w")
+        dfp = open("adaptive_debug_pivots.txt","w")
         for key in self.terms_dict:
             if (is_filtered_term(key) or count <= BERT_TERMS_START):
                 count += 1
