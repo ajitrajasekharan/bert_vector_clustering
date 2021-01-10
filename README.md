@@ -65,6 +65,16 @@ To test this service
   The descriptors "cat dog cow horse" are typically the predictions for a masked word in a sentence. The results are all BIO-SPECIES or BIO capturing the entity type of the masked word. Refer to the medium post link above for more details
 
 
+# Mask tests
+
+To examine models output prediction scores for each position 
+
+- python all_word_no_mask.py
+
+To examine the cosine values as well as bias values with output vectors *(which leads to the prediction scores displayed by all_word_no_mask.py)*  from the MLM head (or topmost layer)
+
+ - python graph_test.py `pwd`  `pwd`/bert_vectors.txt `pwd`/vocab.txt 1 1
+
 # License
 
 This repository is covered by MIT license. 
