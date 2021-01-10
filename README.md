@@ -71,7 +71,7 @@ To examine models output prediction scores for each position
 
 - python all_word_no_mask.py
 
-To examine the cosine values as well as bias values with output vectors *(which leads to the prediction scores displayed by all_word_no_mask.py)*  from the MLM head *(or topmost layer)*
+To examine the cosine values as well as bias values with output vectors *(which leads to the prediction scores displayed by all_word_no_mask.py)*  from the MLM head *(or topmost layer)*. To examine from MLM head PyTorch code would need to be patched as explained in this [post](https://towardsdatascience.com/swiss-army-knife-for-unsupervised-task-solving-26f9acf7c023?source=friends_link&sk=6d4bc39010d8026d4bf1a394a90c08f3)
 
  - python graph_test.py `pwd`  `pwd`/bert_vectors.txt `pwd`/vocab.txt 1 1
 
