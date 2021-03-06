@@ -37,7 +37,7 @@ def read_embeddings(embeds_file):
 
 def read_labels(labels_file):
     terms_dict = OrderedDict()
-    with open(labels_file) as fin:
+    with open(labels_file,encoding="utf-8") as fin:
         count = 1
         for term in fin:
             term = term.strip("\n")
@@ -54,7 +54,7 @@ def read_labels(labels_file):
 
 def read_terms(terms_file):
     terms_dict = OrderedDict()
-    with open(terms_file) as fin:
+    with open(terms_file,encoding="utf-8") as fin:
         count = 1
         for term in fin:
             term = term.strip("\n")
@@ -289,21 +289,27 @@ class BertEmbeds:
                 p_str = str(k) + " " +  str(final_sorted_d[k]) + "\n"
                 fp.write(p_str)
 
-        with open("zero_vec_counts.txt","w") as fp:
+        with open("zero_vec_counts.txt","w",encoding="utf-8") as fp:
             fp.write("Total picked:" + str(picked_count) + "\n")
             final_sorted_d = OrderedDict(sorted(zero_dict.items(), key=lambda kv: kv[1], reverse=True))
-            for k in final_sorted_d:
-                print(k,final_sorted_d[k])
-                p_str = str(k) + " " +  str(final_sorted_d[k]) + "\n"
-                fp.write(p_str)
+            try:
+                for k in final_sorted_d:
+                    #print(k,final_sorted_d[k])
+                    p_str = str(k) + " " +  str(final_sorted_d[k]) + "\n"
+                    fp.write(p_str)
+            except:
+                print("Exception 1")
 
-        with open("tail_counts.txt","w") as fp:
+        with open("tail_counts.txt","w",encoding="utf-8") as fp:
             fp.write("Total picked:" + str(picked_count) + " Average tail len: " + str(round(float(total_tail_length)/picked_count,1)) +  "\n")
             final_sorted_d = OrderedDict(sorted(tail_lengths.items(), key=lambda kv: kv[1], reverse=True))
-            for k in final_sorted_d:
-                print(k,final_sorted_d[k])
-                p_str = str(k) + " " +  str(final_sorted_d[k]) + "\n"
-                fp.write(p_str)
+            try:
+                for k in final_sorted_d:
+                    #print(k,final_sorted_d[k])
+                    p_str = str(k) + " " +  str(final_sorted_d[k]) + "\n"
+                    fp.write(p_str)
+            except:
+                print("Exception 2")
 
 
 
@@ -636,7 +642,10 @@ def main():
             print("Enter test type (0-gen cum dist for vocabs; 1-generate clusters (will take approx 2 hours);  2-neigh/3-pivot graph/4-bipartite/5-Entity test: q to quit")
             val = input()
             if (val == "0"):
-                b_embeds.gen_dist_for_vocabs()
+                try:
+                    b_embeds.gen_dist_for_vocabs()
+                except:
+                    print("Trapped exception")
                 sys.exit(-1)
             elif (val == "1"):
                 print("Enter Input threshold .5  works well for both pretraining and fine tuned. Enter 0 for adaptive thresholding")
