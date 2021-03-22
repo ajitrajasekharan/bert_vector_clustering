@@ -83,7 +83,7 @@ def perform_task(model,tokenizer,top_k,accrue_threshold,text):
                 for index in sorted_d:
                     if (index in string.punctuation or index.startswith('##') or len(index) == 1 or index.startswith('.') or index.startswith('[')):
                         continue
-                    print(index,sorted_d[index])
+                    print(index,round(float(sorted_d[index]),4))
                     k += 1
                     if (k > top_k):
                         break
@@ -102,7 +102,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Predicting neighbors to a word in sentence using BERTMaskedLM. Neighbors are from BERT vocab (which includes subwords and full words). Type in a sentence and then choose a position to mask or type in a sentence with the word entity in the location to apply a mask ',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-model', action="store", dest="model", default=DEFAULT_MODEL_PATH,help='BERT pretrained models, or custom model path')
     parser.add_argument('-topk', action="store", dest="topk", default=DEFAULT_TOP_K,type=int,help='Number of neighbors to display')
-    parser.add_argument('-tolower', action="store", dest="tolower", default=DEFAULT_TO_LOWER,help='Convert tokens to lowercase. Set to True only for uncased models')
+    parser.add_argument('-tolower', dest="tolower", action='store_true',help='Convert tokens to lowercase. Set to True only for uncased models')
+    parser.add_argument('-no-tolower', dest="tolower", action='store_false',help='Convert tokens to lowercase. Set to True only for uncased models')
+    parser.set_defaults(tolower=False)
     parser.add_argument('-threshold', action="store", dest="threshold", default=ACCRUE_THRESHOLD,type=float,help='threshold of results to pick')
 
     results = parser.parse_args()
