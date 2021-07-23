@@ -52,6 +52,22 @@ def read_labels(labels_file):
     return terms_dict
 
 
+def read_entities(terms_file):
+    terms_dict = OrderedDict()
+    with open(terms_file,encoding="utf-8") as fin:
+        count = 1
+        for term in fin:
+            term = term.strip("\n")
+            if (len(term) >= 1):
+                nodes = term.split()
+                assert(len(nodes) == 2)
+                terms_dict[nodes[1]] = nodes[0]
+                count += 1
+    print("count of entities in ",terms_file,":", len(terms_dict))
+    return terms_dict
+
+
+
 def read_terms(terms_file):
     terms_dict = OrderedDict()
     with open(terms_file,encoding="utf-8") as fin:
@@ -77,7 +93,7 @@ def filter_2g(term,preserve_dict):
         return True if  (len(term) <= 2 and term not in preserve_dict) else False
 
 class BertEmbeds:
-    def __init__(self, model_path,do_lower, terms_file,embeds_file,cache_embeds,normalize,labels_file,stats_file,preserve_2g_file,glue_words_file):
+    def __init__(self, model_path,do_lower, terms_file,embeds_file,cache_embeds,normalize,labels_file,stats_file,preserve_2g_file,glue_words_file,bootstrap_entities_file):
         do_lower = True if do_lower == 1 else False
         self.tokenizer = BertTokenizer.from_pretrained(model_path,do_lower_case=do_lower)
         self.terms_dict = read_terms(terms_file)
@@ -85,6 +101,7 @@ class BertEmbeds:
         self.stats_dict = read_terms(stats_file)
         self.preserve_dict = read_terms(preserve_2g_file)
         self.gw_dict = read_terms(glue_words_file)
+        self.bootstrap_entities = read_entities(bootstrap_entities_file)
         self.embeddings = read_embeddings(embeds_file)
         self.cache = cache_embeds
         self.embeds_cache = {}
@@ -139,8 +156,9 @@ class BertEmbeds:
                     print("****Term already a pivot node:",max_mean_term, "key  is :",key)
                     new_key  = max_mean_term + "++" + key
                 pivots_dict[new_key] = {"key":new_key,"orig":key,"mean":max_mean,"terms":arr}
-                print(new_key,max_mean,std_dev,arr)
-                dfp.write(new_key + " " + new_key + " " + new_key+" "+key+" "+str(max_mean)+" "+ str(std_dev) + " " +str(arr)+"\n")
+                entity_type = self.get_entity_type(arr)
+                print(entity_type,new_key,max_mean,std_dev,arr)
+                dfp.write(entity_type + " " + entity_type + " " + new_key + " " + new_key + " " + new_key+" "+key+" "+str(max_mean)+" "+ str(std_dev) + " " +str(arr)+"\n")
             else:
                 if (len(arr) == 1):
                     print("***Singleton arr for term:",key)
@@ -154,6 +172,24 @@ class BertEmbeds:
         with open("pivots.json","w") as fp:
             fp.write(json.dumps(pivots_dict))
         dfp.close()
+
+
+    def get_entity_type(self,arr):
+        e_dict = {} 
+        for term in arr:
+            if (term in self.bootstrap_entities):
+                 if (self.bootstrap_entities[term] in e_dict):
+                         e_dict[self.bootstrap_entities[term]] += 1
+                 else:
+                         e_dict[self.bootstrap_entities[term]] = 1
+        
+        if (len(e_dict) > 1):
+               sorted_d = OrderedDict(sorted(e_dict.items(), key=lambda kv: kv[1], reverse=True))
+               for k in sorted_d:
+                   if (k != "OTHER" and sorted_d[k] >= 2):
+                       return k
+        return "OTHER"
+      
 
     def fixed_gen_pivot_graphs(self,threshold,count_limit):
         tokenize = False
@@ -628,15 +664,15 @@ def impl_entities(b_embeds,tokenize,pick_threshold):
 
 
 def main():
-    if (len(sys.argv) != 10):
-        print("Usage: <Bert model path - to load tokenizer> do_lower_case[1/0] <vocab file> <vector file> <tokenize text>1/0 <labels_file>  <preserve_1_2_grams_file> < glue words file>")
+    if (len(sys.argv) != 11):
+        print("Usage: <Bert model path - to load tokenizer> do_lower_case[1/0] <vocab file> <vector file> <tokenize text>1/0 <labels_file>  <preserve_1_2_grams_file> < glue words file> <bootstrap entities file>")
     else:
         tokenize = True if int(sys.argv[5]) == 1 else False
         if (tokenize == True):
             print("Forcing tokenize to false. Ignoring input value")
             tokenize = False #Adding this override to avoid inadvertant subword token generation error for pivot cluster generation
         print("Tokenize is set to :",tokenize)
-        b_embeds =BertEmbeds(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],True,True,sys.argv[6],sys.argv[7],sys.argv[8],sys.argv[9]) #True - for cache embeds; normalize - True
+        b_embeds =BertEmbeds(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],True,True,sys.argv[6],sys.argv[7],sys.argv[8],sys.argv[9],sys.argv[10]) #True - for cache embeds; normalize - True
         display_threshold = .4
         while (True):
             print("Enter test type (0-gen cum dist for vocabs; 1-generate clusters (will take approx 2 hours);  2-neigh/3-pivot graph/4-bipartite/5-Entity test: q to quit")
