@@ -17,6 +17,8 @@ OTHER_TAG = "OTHER"
 AMBIGUOUS = "AMB"
 MAX_VAL = 20
 TAIL_THRESH = 10
+TOP_K = 3
+MIN_STRENGTH = 3
 
 BERT_TERMS_START=106
 UNK_ID = 1
@@ -61,7 +63,10 @@ def read_entities(terms_file):
             if (len(term) >= 1):
                 nodes = term.split()
                 assert(len(nodes) == 2)
-                terms_dict[nodes[1]] = nodes[0]
+                lc_node = nodes[1].lower()
+                if (lc_node in terms_dict):
+                    assert('/'.join(terms_dict[lc_node]) == nodes[0])
+                terms_dict[lc_node] = nodes[0].split('/')
                 count += 1
     print("count of entities in ",terms_file,":", len(terms_dict))
     return terms_dict
@@ -128,6 +133,7 @@ class BertEmbeds:
         empty_arr = []
         total = len(self.terms_dict)
         dfp = open("adaptive_debug_pivots.txt","w")
+        esupfp = open("entity_support.txt","w")
         for key in self.terms_dict:
             if (is_filtered_term(key) or count <= BERT_TERMS_START):
                 count += 1
@@ -156,7 +162,7 @@ class BertEmbeds:
                     print("****Term already a pivot node:",max_mean_term, "key  is :",key)
                     new_key  = max_mean_term + "++" + key
                 pivots_dict[new_key] = {"key":new_key,"orig":key,"mean":max_mean,"terms":arr}
-                entity_type = self.get_entity_type(arr)
+                entity_type = self.get_entity_type(arr,new_key,esupfp,TOP_K,MIN_STRENGTH)
                 print(entity_type,new_key,max_mean,std_dev,arr)
                 dfp.write(entity_type + " " + entity_type + " " + new_key + " " + new_key + " " + new_key+" "+key+" "+str(max_mean)+" "+ str(std_dev) + " " +str(arr)+"\n")
             else:
@@ -172,23 +178,43 @@ class BertEmbeds:
         with open("pivots.json","w") as fp:
             fp.write(json.dumps(pivots_dict))
         dfp.close()
+        esupfp.close()
 
 
-    def get_entity_type(self,arr):
+    def get_entity_type(self,arr,new_key,esupfp,top_k,min_strength):
         e_dict = {} 
+        #print("GET:",arr)
         for term in arr:
             if (term in self.bootstrap_entities):
-                 if (self.bootstrap_entities[term] in e_dict):
-                         e_dict[self.bootstrap_entities[term]] += 1
-                 else:
-                         e_dict[self.bootstrap_entities[term]] = 1
+                 entities = self.bootstrap_entities[term]
+                 for entity in entities:
+                       if (entity in e_dict):
+                            #print(term,entity)
+                            e_dict[entity] += 1
+                       else:
+                            #print(term,entity)
+                            e_dict[entity] = 1
         
+        ret_str = ""
         if (len(e_dict) > 1):
                sorted_d = OrderedDict(sorted(e_dict.items(), key=lambda kv: kv[1], reverse=True))
+               #print(new_key + ":" + str(sorted_d))
+               esupfp.write(new_key + ' ' + str(sorted_d) + '\n')
+               count = 0
                for k in sorted_d:
-                   if (k != "OTHER" and sorted_d[k] >= 2):
-                       return k
-        return "OTHER"
+                   if (sorted_d[k] < min_strength):
+                       break
+                   if (len(ret_str) > 0):
+                       ret_str += '/' + k
+                   else:
+                       ret_str = k
+                   count += 1
+                   if (count >= top_k):
+                      break
+        if (len(ret_str) <= 0):
+            ret_str = "OTHER"
+        #print(ret_str)
+        return ret_str
       
 
     def fixed_gen_pivot_graphs(self,threshold,count_limit):
