@@ -22,7 +22,7 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 	
 	python examine_model.py 2 > bert_vectors.txt	
 
-**Step 1c:** Execute run.sh and then choose option 1 to create cluster file debug_pivots.txt
+**Step 1c:** Execute run.sh and then choose option 1 to create cluster file debug_pivots.txt. *If the intent is to do NER for custom types, replace bootstrap_entities.txt with the entity types of the subset of the terms of interest present in the  vocabulary of the model being used for NER.*
 
 **Step 1d:** Run 
 
