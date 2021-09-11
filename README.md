@@ -28,9 +28,7 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 
 ./extract_labels.sh 
 
-to combine user defined labels in map_labels.txt and debug_pivots.txt. 
-
-**Note** these user labels are only applicable to bert_large_cased model clustering. One would have to create a new  map_labels.txt file from debug_pivots.txt for another model
+*This generate labels.txt and stats_dict.txt which is copied to results directory for use in the NER service mentioned below.*
 
 
 Additionally 
