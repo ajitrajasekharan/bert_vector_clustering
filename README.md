@@ -22,7 +22,7 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 	
 	python examine_model.py 2 > bert_vectors.txt	
 
-**Step 1c:** Execute run.sh and then choose option 1 to create cluster file debug_pivots.txt. *If the intent is to do NER for custom types, replace bootstrap_entities.txt with the entity types of the subset of the terms of interest present in the  vocabulary of the model being used for NER.*
+**Step 1c:** Execute run.sh and then choose option 1 to create cluster file adaptive_debug_pivots.txt. *If the intent is to do NER for custom entity types, replace bootstrap_entities.txt with the entity types of the subset of the terms of interest present in the  vocabulary of the model being used for NER. Update bootstrap_entities.txt file beofre clutering*
 
 **Step 1d:** Run 
 
@@ -43,7 +43,7 @@ Output of clustering using bert_large_cased are in results directory
 
 cum_dist.txt - output of run.sh with option 1
 
-debug_pivots.txt - output of run.sh with option 2
+adaptive_debug_pivots.txt - output of run.sh with option 2
 
 labels.txt and stats_dict.txt - output of running extract_labels.sh
 
