@@ -86,10 +86,10 @@ In the new approach not all the vocab terms are labeled. Some percentage is (and
 The labeled subset is used to label other terms in a cluster.
 
 So the new approach is, 
-0) For each term,when clustering capture the histogram of label elements across clusters. Label picking from clustering is still done with 
+1) For each term,when clustering, capture the histogram of label elements across clusters. Label picking from clustering is still done with 
 thresholding.
-1) Then for each term, confirm the manual label if any for a term (except OTHER) is one of the dominant cluster label too.  If it not, drop that cluster for that term - it is equivalent to noise in that cluster. 
-    If the manual label is absent, which means it is an OTHER, then inherit the predominant cluster labels.
+2) Then for each term in a cluster, confirm the manual label if any for that term (except OTHER) is one of the dominant cluster labels too.  If it not, do not include that term label as part of the cluster label  - it is equivalent to noise in that cluster. 
+    If a manual label is absent for that term, which means it is an OTHER, then inherit the predominant cluster labels.
 2) Ensembling for a term across models simply does a union of labels and their counts, just as we do when we aggregate labels for a term across clusters for a single model
 
 The advantage of clustering is, in addition to not having to label all terms in a vocab, manual/automated labeling can be noisy. Clustering helps reduce that noise.
