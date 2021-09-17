@@ -9,6 +9,7 @@ import math
 from transformers import *
 import sys
 import random
+import time
 
 
 SINGLETONS_TAG  = "_singletons_ "
@@ -22,8 +23,8 @@ MIN_STRENGTH = 3
 
 BERT_TERMS_START=106
 UNK_ID = 1
-#Original setting for cluster generation. 
-OLD_FORM=True
+IGNORE_CONTINUATIONS=True
+USE_PRESERVE=True
 
 try:
     from subprocess import DEVNULL  # Python 3.
@@ -34,24 +35,71 @@ except ImportError:
 
 def read_embeddings(embeds_file):
     with open(embeds_file) as fp:
-        embeds_dict = json.loads(fp.read())
-    return embeds_dict
+        embeds_list = json.loads(fp.read())
+    arr = np.array(embeds_list)
+    return arr
+
+
+def consolidate_labels(existing_node,new_labels,new_counts):
+    """Consolidates all the labels and counts for terms ignoring casing
+
+    For instance, egfr may not have an entity label associated with it
+    but eGFR and EGFR may have. So if input is egfr, then this function ensures
+    the combined entities set fo eGFR and EGFR is made so as to return that union
+    for egfr
+    """
+    new_dict = {}
+    existing_labels_arr = existing_node["label"].split('/')
+    existing_counts_arr = existing_node["counts"].split('/')
+    new_labels_arr = new_labels.split('/')
+    new_counts_arr = new_counts.split('/')
+    assert(len(existing_labels_arr) == len(existing_counts_arr))
+    assert(len(new_labels_arr) == len(new_counts_arr))
+    for i in range(len(existing_labels_arr)):
+        new_dict[existing_labels_arr[i]] = int(existing_counts_arr[i])
+    for i in range(len(new_labels_arr)):
+        if (new_labels_arr[i] in new_dict):
+            new_dict[new_labels_arr[i]] += int(new_counts_arr[i])
+        else:
+            new_dict[new_labels_arr[i]] = int(new_counts_arr[i])
+    sorted_d = OrderedDict(sorted(new_dict.items(), key=lambda kv: kv[1], reverse=True))
+    ret_labels_str = ""
+    ret_counts_str = ""
+    count = 0
+    for key in sorted_d:
+        if (count == 0):
+            ret_labels_str = key
+            ret_counts_str = str(sorted_d[key])
+        else:
+            ret_labels_str += '/' +  key
+            ret_counts_str += '/' +  str(sorted_d[key])
+        count += 1
+    return {"label":ret_labels_str,"counts":ret_counts_str}
+        
+
+
 
 def read_labels(labels_file):
     terms_dict = OrderedDict()
+    lc_terms_dict = OrderedDict()
     with open(labels_file,encoding="utf-8") as fin:
         count = 1
         for term in fin:
             term = term.strip("\n")
             term = term.split()
-            if (len(term) == 5):
-                terms_dict[term[2]] = {"label":term[0],"aux_label":term[1],"mean":float(term[3]),"variance":float(term[4])}
+            if (len(term) == 3):
+                terms_dict[term[2]] = {"label":term[0],"counts":term[1]}
+                lc_term = term[2].lower()
+                if (lc_term in lc_terms_dict):
+                     lc_terms_dict[lc_term] = consolidate_labels(lc_terms_dict[lc_term],term[0],term[1])
+                else:
+                     lc_terms_dict[lc_term] = {"label":term[0],"counts":term[1]} 
                 count += 1
             else:
                 print("Invalid line:",term)
                 assert(0)
     print("count of labels in " + labels_file + ":", len(terms_dict))
-    return terms_dict
+    return terms_dict,lc_terms_dict
 
 
 def read_entities(terms_file):
@@ -86,34 +134,48 @@ def read_terms(terms_file):
     return terms_dict
 
 def is_filtered_term(key): #Words selector. skiping all unused and special tokens
-    if (OLD_FORM): 
+    if (IGNORE_CONTINUATIONS): 
         return True if (str(key).startswith('#') or str(key).startswith('[')) else False
     else:
         return True if (str(key).startswith('[')) else False
 
 def filter_2g(term,preserve_dict):
-    if (OLD_FORM):
-        return True if  (len(term) <= 2 ) else False
-    else:
+    if (USE_PRESERVE):
         return True if  (len(term) <= 2 and term not in preserve_dict) else False
+    else:
+        return True if  (len(term) <= 2 ) else False
 
 class BertEmbeds:
     def __init__(self, model_path,do_lower, terms_file,embeds_file,cache_embeds,normalize,labels_file,stats_file,preserve_2g_file,glue_words_file,bootstrap_entities_file):
         do_lower = True if do_lower == 1 else False
         self.tokenizer = BertTokenizer.from_pretrained(model_path,do_lower_case=do_lower)
         self.terms_dict = read_terms(terms_file)
-        self.labels_dict = read_labels(labels_file)
-        self.stats_dict = read_terms(stats_file)
+        self.labels_dict,self.lc_labels_dict = read_labels(labels_file)
+        self.stats_dict = read_terms(stats_file) #Not used anymore
         self.preserve_dict = read_terms(preserve_2g_file)
         self.gw_dict = read_terms(glue_words_file)
         self.bootstrap_entities = read_entities(bootstrap_entities_file)
         self.embeddings = read_embeddings(embeds_file)
-        self.cache = cache_embeds
-        self.embeds_cache = {}
-        self.cosine_cache = {}
         self.dist_threshold_cache = {}
         self.dist_zero_cache = {}
         self.normalize = normalize
+        self.similarity_matrix = self.cache_matrix(True)
+
+    def cache_matrix(self,normalize):
+        b_embeds = self
+        print("Computing similarity matrix (takes approx 5 minutes for ~100,000x100,000 matrix ...)")
+        start = time.time()
+        #pdb.set_trace()
+        vec_a = b_embeds.embeddings.T #vec_a shape (1024,)
+        if (normalize):
+            vec_a = vec_a/np.linalg.norm(vec_a,axis=0) #Norm is along axis 0 - rows
+            vec_a = vec_a.T #vec_a shape becomes (,1024)
+            similarity_matrix = np.inner(vec_a,vec_a) 
+        end = time.time()
+        time_val = (end-start)*1000
+        print("Similarity matrix computation complete.Elapsed:",time_val/(1000*60)," minutes")
+        return similarity_matrix
+
 
     def dump_vocab(self):
         #pdb.set_trace()
@@ -130,6 +192,7 @@ class BertEmbeds:
         picked_dict = OrderedDict()
         pivots_dict = OrderedDict()
         singletons_arr = []
+        full_entities_dict = OrderedDict()
         empty_arr = []
         total = len(self.terms_dict)
         dfp = open("adaptive_debug_pivots.txt","w")
@@ -162,9 +225,10 @@ class BertEmbeds:
                     print("****Term already a pivot node:",max_mean_term, "key  is :",key)
                     new_key  = max_mean_term + "++" + key
                 pivots_dict[new_key] = {"key":new_key,"orig":key,"mean":max_mean,"terms":arr}
-                entity_type = self.get_entity_type(arr,new_key,esupfp,TOP_K,MIN_STRENGTH)
-                print(entity_type,new_key,max_mean,std_dev,arr)
-                dfp.write(entity_type + " " + entity_type + " " + new_key + " " + new_key + " " + new_key+" "+key+" "+str(max_mean)+" "+ str(std_dev) + " " +str(arr)+"\n")
+                entity_type,entity_counts,curr_entities_dict = self.get_entity_type(arr,new_key,esupfp,TOP_K,MIN_STRENGTH)
+                self.aggregate_entities_for_terms(arr,curr_entities_dict,full_entities_dict)
+                print(entity_type,entity_counts,new_key,max_mean,std_dev,arr)
+                dfp.write(entity_type + " " + entity_counts + " " + new_key + " " + new_key + " " + new_key+" "+key+" "+str(max_mean)+" "+ str(std_dev) + " " +str(arr)+"\n")
             else:
                 if (len(arr) == 1):
                     print("***Singleton arr for term:",key)
@@ -172,19 +236,68 @@ class BertEmbeds:
                 else:
                     print("***Empty arr for term:",key)
                     empty_arr.append(key)
+            #if (count >= 500):
+            #    break
 
         dfp.write(SINGLETONS_TAG + str(singletons_arr) + "\n")
         dfp.write(EMPTY_TAG + str(empty_arr) + "\n")
         with open("pivots.json","w") as fp:
             fp.write(json.dumps(pivots_dict))
+        with open("pivots.txt","w") as fp:
+            for k in pivots_dict:
+                fp.write(k + '\n')
         dfp.close()
         esupfp.close()
+        self.create_entity_labels_file(full_entities_dict)
 
+    def aggregate_entities_for_terms(self,arr,curr_entities_dict,full_entities_dict):
+        if (len(curr_entities_dict) == 0):
+            return
+        for term in arr:
+            if term not in full_entities_dict:
+                full_entities_dict[term] = OrderedDict()
+            if (term in self.bootstrap_entities):
+                term_entities = self.bootstrap_entities[term]
+            else:
+                term_entities =  {}
+            for entity in curr_entities_dict:
+                if  (entity not in term_entities and ((len(term_entities) > 1) or ((len(term_entities) == 1) and ("OTHER" not in term_entities)))): #do not pick entity if it is not present in the manual entity list for a term. Exception is other.This reduces the effect of noisy manual labeling
+                    continue
+                if (entity not  in full_entities_dict[term]):
+                    full_entities_dict[term][entity] = curr_entities_dict[entity]
+                else:
+                    full_entities_dict[term][entity] += curr_entities_dict[entity]
+               
+            
+    def create_entity_labels_file(self,full_entities_dict):
+        with open("labels.txt","w") as fp:
+            for term in full_entities_dict:
+                out_entity_dict = {}
+                for entity in full_entities_dict[term]:
+                    assert(entity not in out_entity_dict)
+                    out_entity_dict[entity] = full_entities_dict[term][entity]
+                sorted_d = OrderedDict(sorted(out_entity_dict.items(), key=lambda kv: kv[1], reverse=True))
+                entity_str = ""
+                count_str = ""
+                for entity in sorted_d: 
+                    if (len(entity_str) == 0):
+                        entity_str = entity 
+                        count_str =  str(sorted_d[entity])
+                    else:
+                        entity_str += '/' +  entity 
+                        count_str +=  '/' + str(sorted_d[entity])
+                if (len(entity_str) > 0):
+                    fp.write(entity_str + ' ' + count_str + ' ' + term + "\n")
+            
+        
+       
+   
 
     def get_entity_type(self,arr,new_key,esupfp,top_k,min_strength):
         e_dict = {} 
         #print("GET:",arr)
         for term in arr:
+            term = term.lower()
             if (term in self.bootstrap_entities):
                  entities = self.bootstrap_entities[term]
                  for entity in entities:
@@ -194,9 +307,10 @@ class BertEmbeds:
                        else:
                             #print(term,entity)
                             e_dict[entity] = 1
-        
         ret_str = ""
-        if (len(e_dict) > 1):
+        count_str = ""
+        entities_dict = OrderedDict()
+        if (len(e_dict) >= 1):
                sorted_d = OrderedDict(sorted(e_dict.items(), key=lambda kv: kv[1], reverse=True))
                #print(new_key + ":" + str(sorted_d))
                esupfp.write(new_key + ' ' + str(sorted_d) + '\n')
@@ -206,15 +320,20 @@ class BertEmbeds:
                        break
                    if (len(ret_str) > 0):
                        ret_str += '/' + k
+                       count_str += '/' + str(sorted_d[k])
                    else:
                        ret_str = k
+                       count_str = str(sorted_d[k])
+                   entities_dict[k] = int(sorted_d[k])
                    count += 1
                    if (count >= top_k):
                       break
         if (len(ret_str) <= 0):
             ret_str = "OTHER"
+            count_str = str(len(arr))
         #print(ret_str)
-        return ret_str
+        count_str += '/' + str(len(arr))
+        return ret_str,count_str,entities_dict
       
 
     def fixed_gen_pivot_graphs(self,threshold,count_limit):
@@ -375,10 +494,9 @@ class BertEmbeds:
 
 
 
-    def get_embedding(self,text,tokenize=True):
-        if (self.cache and text in self.embeds_cache):
-            return self.embeds_cache[text]
+    def get_embedding_index(self,text,tokenize=False):
         if (tokenize):
+            assert(0)
             tokenized_text = self.tokenizer.tokenize(text)
         else:
             if (not text.startswith('[')): 
@@ -386,48 +504,16 @@ class BertEmbeds:
             else:
                tokenized_text = [text]
         indexed_tokens = self.tokenizer.convert_tokens_to_ids(tokenized_text)
-        #print(text,indexed_tokens)
-        vec =  self.get_vector(indexed_tokens)
-        if (self.cache):
-                self.embeds_cache[text] = vec
-        return vec
+        assert(len(indexed_tokens) == 1)
+        return indexed_tokens[0] 
 
 
-    def get_vector(self,indexed_tokens):
-        vec = None
-        if (len(indexed_tokens) == 0):
-            return vec
-        #pdb.set_trace()
-        for i in range(len(indexed_tokens)):
-            term_vec = self.embeddings[indexed_tokens[i]]
-            if (vec is None):
-                vec = np.zeros(len(term_vec))
-            vec += term_vec
-        sq_sum = 0
-        for i in range(len(vec)):
-            sq_sum += vec[i]*vec[i]
-        sq_sum = math.sqrt(sq_sum)
-        for i in range(len(vec)):
-            vec[i] = vec[i]/sq_sum
-        #sq_sum = 0
-        #for i in range(len(vec)):
-        #    sq_sum += vec[i]*vec[i]
-        return vec
 
     def calc_inner_prod(self,text1,text2,tokenize):
-        if (self.cache and text1 in self.cosine_cache and text2 in self.cosine_cache[text1]):
-            return self.cosine_cache[text1][text2]
-        vec1 = self.get_embedding(text1,tokenize)
-        vec2 = self.get_embedding(text2,tokenize)
-        if (vec1 is None or vec2 is None):
-            #print("Warning: at least one of the vectors is None for terms",text1,text2)
-            return 0
-        val = np.inner(vec1,vec2)
-        if (self.cache):
-            if (text1 not in self.cosine_cache):
-                self.cosine_cache[text1] = {}
-            self.cosine_cache[text1][text2] = val
-        return val
+        assert(tokenize == False)
+        index1 = self.get_embedding_index(text1)
+        index2 = self.get_embedding_index(text2)
+        return self.similarity_matrix[index1][index2]
 
     def get_distribution_for_term(self,term1,tokenize):
         debug_fp = None
@@ -537,18 +623,6 @@ class BertEmbeds:
         val = float(full_score)/(len(terms1)*len(terms2)) if normalize else float(full_score)
         return round(val,2),round(max_val,2)
 
-    def gen_label(self,node):
-        if (node["label"] in self.stats_dict):
-            if (node["aux_label"] in self.stats_dict):
-                ret_label = node["label"] + "-" +  node["aux_label"]
-            else:
-                if (node["label"]  == AMBIGUOUS):
-                    ret_label = node["label"] + "-" +  node["aux_label"]
-                else:
-                    ret_label = node["label"]
-        else:
-                ret_label = OTHER_TAG + "-" + node["label"]
-        return ret_label
 
     def filter_glue_words(self,words):
         ret_words = []
@@ -561,33 +635,26 @@ class BertEmbeds:
 
     def find_entities(self,words):
         entities = self.labels_dict
-        tokenize = False
+        lc_entities = self.lc_labels_dict
         words = self.filter_glue_words(words)
-        desc_max_term,desc_mean,desc_std_dev,s_dict = self.find_pivot_subgraph(words,tokenize)
-        print("PSG score of input descs:",desc_max_term,desc_mean,desc_std_dev,s_dict)
-        #OVERRIDE pivot
-        #desc_max_term = words[0]
-        #print("pivot override",desc_max_term)
-        pivot_similarities = {}
-        for i,key in enumerate(entities):
-            term = key
-            val = round(self.calc_inner_prod(desc_max_term,term,tokenize),2)
-            pivot_similarities[key] = val
-            #print("SIM:",desc_max_term,term,val)
-        sorted_d = OrderedDict(sorted(pivot_similarities.items(), key=lambda kv: kv[1], reverse=True))
-        count = 0
         ret_arr = []
-        for k in sorted_d:
-            #if (sorted_d[k] < pick_threshold):
-            #    if (count == 0):
-            #        print("No entity above thresold")
-            #    break
-            print(entities[k]["label"],k,sorted_d[k],"(",entities[k]["mean"],entities[k]["variance"],")")
-            ret_label = self.gen_label(entities[k])
+        for word in words:
+            l_word = word.lower()
+            if (word in entities):
+                ret_label = entities[word]["label"]
+                ret_counts = entities[word]["counts"]
+            elif (l_word in entities):
+                ret_label = entities[l_word]["label"]
+                ret_counts = entities[l_word]["counts"]
+            elif (l_word in lc_entities):
+                ret_label = lc_entities[l_word]["label"]
+                ret_counts = lc_entities[l_word]["counts"]
+            else:
+                ret_label = "OTHER"
+                ret_counts = "0"
+            print(word,ret_label,ret_counts)
             ret_arr.append(ret_label)
-            count+= 1
-            if (count >= 10):
-                break
+            ret_arr.append(ret_counts)
         return ret_arr
 
 

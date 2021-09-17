@@ -1,8 +1,9 @@
-#cat debug_pivots.txt |  awk '{if ($1 != "_singletons_" && $1 != "_empty_") print $1,$2,$3,$5,$6}' > tmp_labels.txt
-cat debug_pivots.txt |  awk '{if ($1 != "_singletons_" && $1 != "_empty_") print $3,$5,$6}' > tmp_labels.txt
-cat map_labels.txt | awk '{print $1,$2}' > user_labels.txt
-paste -d ' ' user_labels.txt tmp_labels.txt > labels.txt
-python label_stats.py
-cat labels.txt | awk '{if (NF != 5) print $0}'
+cp labels.txt results
+echo "Stats in clusters"
+python label_stats.py adaptive_debug_pivots.txt
+echo "Stats after aggregation"
+python label_stats.py labels.txt
+cp stats_dict.txt results
+#cat labels.txt | awk '{if (NF != 5) print $0}'
 
 

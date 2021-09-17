@@ -12,6 +12,8 @@ import string
 import logging
 
 #DEFAULT_MODEL_PATH='bert-large-cased'
+#DEFAULT_MODEL_PATH='bert-base-cased' #works best for names
+#DEFAULT_MODEL_PATH='bert-base-uncased'
 DEFAULT_MODEL_PATH='./'
 DEFAULT_TO_LOWER=False
 DEFAULT_TOP_K = 20
@@ -19,6 +21,7 @@ ACCRUE_THRESHOLD = 1
 
 def init_model(model_path,to_lower):
     logging.basicConfig(level=logging.INFO)
+    print("******* MODEL[path] is:",model_path," lower casing is set to:",to_lower)
     tokenizer = BertTokenizer.from_pretrained(model_path,do_lower_case=to_lower)
     model = BertForMaskedLM.from_pretrained(model_path)
     #tokenizer = RobertaTokenizer.from_pretrained(model_path,do_lower_case=to_lower)
@@ -48,8 +51,8 @@ def read_descs(file_name):
 
 
 
-def perform_task(model,tokenizer,top_k,accrue_threshold,text):
-    text = '[CLS]' + text + ' [SEP]' 
+def perform_task(model,tokenizer,top_k,accrue_threshold,text,patched):
+    text = '[CLS] ' + text + ' [SEP]' 
     tokenized_text = tokenizer.tokenize(text)
     indexed_tokens = tokenizer.convert_tokens_to_ids(tokenized_text)
 
@@ -70,13 +73,22 @@ def perform_task(model,tokenizer,top_k,accrue_threshold,text):
                 results_dict = {}
                 masked_index = i
                 neighs_dict = {}
-                for j in range(len(predictions[0][0][0,masked_index])):
-                    if (float(predictions[0][0][0,masked_index][j].tolist()) > accrue_threshold):
+                if (patched):
+                    for j in range(len(predictions[0][0][0,masked_index])):
+                        if (float(predictions[0][0][0,masked_index][j].tolist()) > accrue_threshold):
+                            tok = tokenizer.convert_ids_to_tokens([j])[0]
+                            results_dict[tok] = float(predictions[0][0][0,masked_index][j].tolist())
                         tok = tokenizer.convert_ids_to_tokens([j])[0]
-                        results_dict[tok] = float(predictions[0][0][0,masked_index][j].tolist())
-                    tok = tokenizer.convert_ids_to_tokens([j])[0]
-                    if (tok in tokenized_text):
-                        neighs_dict[tok] = float(predictions[0][0][0,masked_index][j].tolist())
+                        if (tok in tokenized_text):
+                            neighs_dict[tok] = float(predictions[0][0][0,masked_index][j].tolist())
+                else:
+                    for j in range(len(predictions[0][0][masked_index])):
+                        if (float(predictions[0][0][masked_index][j].tolist()) > accrue_threshold):
+                            tok = tokenizer.convert_ids_to_tokens([j])[0]
+                            results_dict[tok] = float(predictions[0][0][masked_index][j].tolist())
+                        tok = tokenizer.convert_ids_to_tokens([j])[0]
+                        if (tok in tokenized_text):
+                            neighs_dict[tok] = float(predictions[0][0][masked_index][j].tolist())
                 k = 0
                 sorted_d = OrderedDict(sorted(results_dict.items(), key=lambda kv: kv[1], reverse=True))
                 print("********* Top predictions for token: ",tokenized_text[i])
@@ -106,6 +118,10 @@ if __name__ == '__main__':
     parser.add_argument('-no-tolower', dest="tolower", action='store_false',help='Convert tokens to lowercase. Set to True only for uncased models')
     parser.set_defaults(tolower=False)
     parser.add_argument('-threshold', action="store", dest="threshold", default=ACCRUE_THRESHOLD,type=float,help='threshold of results to pick')
+    parser.add_argument('-patched', dest="patched", action='store_true',help='Is pytorch code patched to harvest [CLS]')
+    parser.add_argument('-no-patched', dest="patched", action='store_false',help='Is pytorch code patched to harvest [CLS]')
+    parser.set_defaults(tolower=False)
+    parser.set_defaults(patched=False)
 
     results = parser.parse_args()
     try:
@@ -116,7 +132,7 @@ if __name__ == '__main__':
             if (text == "q"):
                 print("Quitting")
                 break
-            perform_task(model,tokenizer,results.topk,results.threshold,text)
+            perform_task(model,tokenizer,results.topk,results.threshold,text,results.patched)
     except:
         print("Unexpected error:", sys.exc_info()[0])
         traceback.print_exc(file=sys.stdout)
