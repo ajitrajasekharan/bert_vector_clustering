@@ -73,6 +73,27 @@ To examine the cosine values as well as bias values with output vectors *(which 
 
  - python graph_test.py `pwd`  `pwd`/bert_vectors.txt `pwd`/vocab.txt 1 1
 
+
+# Revision notes
+
+17 Sept 2021
+
+The original labeling of vocab file terms was reduced by just labeling cluster pivots by manually looking at the clusters the pivots belong to. For example PERSON or PERSON/LOCATION etc.
+
+
+In the new approach a bootstrap list of terms labeled by humans are used to automatically label clusters.
+In the new approach not all the vocab terms are labeled. Some percentage is (and this can grow over time as we create new vocabs)
+The labeled subset is used to label other terms in a cluster.
+
+So the new approach is, 
+0) For each term,when clustering capture the histogram of label elements across clusters. Label picking from clustering is still done with 
+thresholding.
+1) Then for each term, confirm the manual label if any for a term (except OTHER) is one of the dominant cluster label too.  If it not, drop that cluster for that term - it is equivalent to noise in that cluster. 
+    If the manual label is absent, which means it is an OTHER, then inherit the predominant cluster labels.
+2) Ensembling for a term across models simply does a union of labels and their counts, just as we do when we aggregate labels for a term across clusters for a single model
+
+The advantage of clustering is, in addition to not having to label all terms in a vocab, manual/automated labeling can be noisy. Clustering helps reduce that noise.
+
 # License
 
 This repository is covered by MIT license. 
