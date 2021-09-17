@@ -58,7 +58,7 @@ To test this service
 
 - cat out
   
-  *BIO-SPECIES BIO-SPECIES BIO-SPECIES BIO BIO BIO BIO BIO BIO BIO*
+  *BIO-SPECIES 13 BIO-SPECIES 13 BIO-SPECIES 13*
   
   The descriptors "cat dog cow horse" are typically the predictions for a masked word in a sentence. The results are all BIO-SPECIES or BIO capturing the entity type of the masked word. Refer to the medium post link above for more details
 
