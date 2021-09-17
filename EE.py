@@ -17,7 +17,7 @@ class EE(ResponseHandler.ResponseHandler):
 		print("In derived class")
 		global singleton
 		if singleton is None:
-			singleton = dist_v2.BertEmbeds(os.getcwd(),0,'vocab.txt','bert_vectors.txt',True,True,'results/labels.txt','results/stats_dict.txt','preserve_1_2_grams.txt','glue_words.txt')
+			singleton = dist_v2.BertEmbeds(os.getcwd(),0,'vocab.txt','bert_vectors.txt',True,True,'results/labels.txt','results/stats_dict.txt','preserve_1_2_grams.txt','glue_words.txt','bootstrap_entities.txt')
 		if (write_obj is not None):
 			param=urllib.parse.unquote(write_obj.path[1:])
 			print("Arg = ",param)
