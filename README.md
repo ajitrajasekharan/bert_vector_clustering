@@ -22,15 +22,13 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 	
 	python examine_model.py 2 > bert_vectors.txt	
 
-**Step 1c:** Execute run.sh and then choose option 1 to create cluster file debug_pivots.txt
+**Step 1c:** Execute run.sh and then choose option 1 to create cluster file adaptive_debug_pivots.txt. *If the intent is to do NER for custom entity types, replace bootstrap_entities.txt with the entity types of the subset of the terms of interest present in the  vocabulary of the model being used for NER. Update bootstrap_entities.txt file beofre clutering*
 
 **Step 1d:** Run 
 
 ./extract_labels.sh 
 
-to combine user defined labels in map_labels.txt and debug_pivots.txt. 
-
-**Note** these user labels are only applicable to bert_large_cased model clustering. One would have to create a new  map_labels.txt file from debug_pivots.txt for another model
+*This generate labels.txt and stats_dict.txt which is copied to results directory for use in the NER service mentioned below.*
 
 
 Additionally 
@@ -45,7 +43,7 @@ Output of clustering using bert_large_cased are in results directory
 
 cum_dist.txt - output of run.sh with option 1
 
-debug_pivots.txt - output of run.sh with option 2
+adaptive_debug_pivots.txt - output of run.sh with option 2
 
 labels.txt and stats_dict.txt - output of running extract_labels.sh
 
@@ -60,7 +58,7 @@ To test this service
 
 - cat out
   
-  *BIO-SPECIES BIO-SPECIES BIO-SPECIES BIO BIO BIO BIO BIO BIO BIO*
+  *BIO-SPECIES 13 BIO-SPECIES 13 BIO-SPECIES 13*
   
   The descriptors "cat dog cow horse" are typically the predictions for a masked word in a sentence. The results are all BIO-SPECIES or BIO capturing the entity type of the masked word. Refer to the medium post link above for more details
 
@@ -74,6 +72,27 @@ To examine models output prediction scores for each position
 To examine the cosine values as well as bias values with output vectors *(which leads to the prediction scores displayed by all_word_no_mask.py)*  from the MLM head *(or topmost layer)*. To examine from MLM head PyTorch code would need to be patched as explained in this [post](https://towardsdatascience.com/swiss-army-knife-for-unsupervised-task-solving-26f9acf7c023?source=friends_link&sk=6d4bc39010d8026d4bf1a394a90c08f3)
 
  - python graph_test.py `pwd`  `pwd`/bert_vectors.txt `pwd`/vocab.txt 1 1
+
+
+# Revision notes
+
+17 Sept 2021
+
+The original labeling of vocab file terms was reduced by just labeling cluster pivots by manually looking at the clusters the pivots belong to. For example PERSON or PERSON/LOCATION etc.
+
+
+In the new approach a bootstrap list of terms labeled by humans are used to automatically label clusters.
+In the new approach not all the vocab terms are labeled. Some percentage is (and this can grow over time as we create new vocabs)
+The labeled subset is used to label other terms in a cluster.
+
+So the new approach is, 
+1) For each term,when clustering, capture the histogram of label elements across clusters. Label picking from clustering is still done with 
+thresholding.
+2) Then for each term in a cluster, confirm the manual label if any for that term (except OTHER) is one of the dominant cluster labels too.  If it not, do not include that term label as part of the cluster label  - it is equivalent to noise in that cluster. 
+    If a manual label is absent for that term, which means it is an OTHER, then inherit the predominant cluster labels.
+2) Ensembling for a term across models simply does a union of labels and their counts, just as we do when we aggregate labels for a term across clusters for a single model
+
+The advantage of clustering is, in addition to not having to label all terms in a vocab, manual/automated labeling can be noisy. Clustering helps reduce that noise.
 
 # License
 
