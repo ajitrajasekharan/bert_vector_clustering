@@ -93,12 +93,13 @@ So the new approach is,
 5) Output the entire vocab file with entity info for each term. Terms that occurred in bootsrap file and in clusters will have entities reordered by the clustering process. Terms that occured in bootstrap file but not in clusters will inherit manual labels as is without any reordering or count information. Terms tha did not occurr in bootstrap file and showed up in clusters will be output as an inferred entities list for futher manual labeling (at least the top frequence ones). Terms that did not occurr in bootstrap and and did not occur in clusters, but just present in vocab will be tagged "OTHER".
 6) Note while bootstrap entities are case insensitive, clustering is on case sensitive terms. So even if entiteis for a cased and uncased version of a term are present together in bootstrap file, they separate out in output with different ordering of the entities based on the clusters they occur. Example is eGFR and EGFR.
 For instance, if the bootstrap list order for the case insenstive version of egfr is
-GENE/LAB_PROCEDURE/PROTEIN/RECEPTOR egfr
+
+ - GENE/LAB_PROCEDURE/PROTEIN/RECEPTOR egfr
 
 after clustering (in this case vocab contains eGFR and EGFR) the cased variations separate and have different orders and cluster counts
-GENE/PROTEIN/LAB_PROCEDURE/RECEPTOR 134/36/23/10 EGFR
+ - GENE/PROTEIN/LAB_PROCEDURE/RECEPTOR 134/36/23/10 EGFR
 
-LAB_PROCEDURE/GENE/PROTEIN/RECEPTOR 8/7/5/3 eGFR
+ - LAB_PROCEDURE/GENE/PROTEIN/RECEPTOR 8/7/5/3 eGFR
 
 In essence clustering reorders the manuaally labeled entities for a term into the different context independent meanings of the term, based on the cased versions of the term in the vocabulary.
 
