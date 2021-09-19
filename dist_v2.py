@@ -18,8 +18,6 @@ OTHER_TAG = "OTHER"
 AMBIGUOUS = "AMB"
 MAX_VAL = 20
 TAIL_THRESH = 10
-TOP_K = 3
-MIN_STRENGTH = 3
 
 BERT_TERMS_START=106
 UNK_ID = 1
@@ -103,6 +101,9 @@ def read_labels(labels_file):
 
 
 def read_entities(terms_file):
+    ''' Read bootstrap entities file
+
+    '''
     terms_dict = OrderedDict()
     with open(terms_file,encoding="utf-8") as fin:
         count = 1
@@ -113,6 +114,8 @@ def read_entities(terms_file):
                 assert(len(nodes) == 2)
                 lc_node = nodes[1].lower()
                 if (lc_node in terms_dict):
+                    pdb.set_trace()
+                    assert(0)
                     assert('/'.join(terms_dict[lc_node]) == nodes[0])
                 terms_dict[lc_node] = nodes[0].split('/')
                 count += 1
@@ -193,6 +196,7 @@ class BertEmbeds:
         pivots_dict = OrderedDict()
         singletons_arr = []
         full_entities_dict = OrderedDict()
+        untagged_items_dict = OrderedDict()
         empty_arr = []
         total = len(self.terms_dict)
         dfp = open("adaptive_debug_pivots.txt","w")
@@ -225,8 +229,8 @@ class BertEmbeds:
                     print("****Term already a pivot node:",max_mean_term, "key  is :",key)
                     new_key  = max_mean_term + "++" + key
                 pivots_dict[new_key] = {"key":new_key,"orig":key,"mean":max_mean,"terms":arr}
-                entity_type,entity_counts,curr_entities_dict = self.get_entity_type(arr,new_key,esupfp,TOP_K,MIN_STRENGTH)
-                self.aggregate_entities_for_terms(arr,curr_entities_dict,full_entities_dict)
+                entity_type,entity_counts,curr_entities_dict = self.get_entity_type(arr,new_key,esupfp)
+                self.aggregate_entities_for_terms(arr,curr_entities_dict,full_entities_dict,untagged_items_dict)
                 print(entity_type,entity_counts,new_key,max_mean,std_dev,arr)
                 dfp.write(entity_type + " " + entity_counts + " " + new_key + " " + new_key + " " + new_key+" "+key+" "+str(max_mean)+" "+ str(std_dev) + " " +str(arr)+"\n")
             else:
@@ -249,19 +253,27 @@ class BertEmbeds:
         dfp.close()
         esupfp.close()
         self.create_entity_labels_file(full_entities_dict)
+        self.create_inferred_entities_file(untagged_items_dict)
 
-    def aggregate_entities_for_terms(self,arr,curr_entities_dict,full_entities_dict):
+    def aggregate_entities_for_terms(self,arr,curr_entities_dict,full_entities_dict,untagged_items_dict):
         if (len(curr_entities_dict) == 0):
             return
         for term in arr:
-            if term not in full_entities_dict:
-                full_entities_dict[term] = OrderedDict()
-            if (term in self.bootstrap_entities):
-                term_entities = self.bootstrap_entities[term]
+            if (term.lower() in self.bootstrap_entities): #Note this is a case insensitive check
+                term_entities = self.bootstrap_entities[term.lower()]
             else:
-                term_entities =  {}
+                if (term not in untagged_items_dict):
+                    untagged_items_dict[term] = OrderedDict()
+                    for entity in curr_entities_dict:
+                        if (entity not in untagged_items_dict[term]):
+                            untagged_items_dict[term][entity] = curr_entities_dict[entity]
+                        else:
+                            untagged_items_dict[term][entity] += curr_entities_dict[entity]
+                continue
+            if term not in full_entities_dict: #This is case sensitive. We want vocab entries eGFR and EGFR to pick up separate weights for their entities
+                full_entities_dict[term] = OrderedDict()
             for entity in curr_entities_dict:
-                if  (entity not in term_entities and ((len(term_entities) > 1) or ((len(term_entities) == 1) and ("OTHER" not in term_entities)))): #do not pick entity if it is not present in the manual entity list for a term. Exception is other.This reduces the effect of noisy manual labeling
+                if  (entity not in term_entities): #aggregate counts only for entities present for this term in original manual harvesting list
                     continue
                 if (entity not  in full_entities_dict[term]):
                     full_entities_dict[term][entity] = curr_entities_dict[entity]
@@ -271,7 +283,15 @@ class BertEmbeds:
             
     def create_entity_labels_file(self,full_entities_dict):
         with open("labels.txt","w") as fp:
-            for term in full_entities_dict:
+            for term in self.terms_dict:
+                if (term not in full_entities_dict and term.lower() not in self.bootstrap_entities):
+                    fp.write("OTHER 0 " + term + "\n")
+                    continue
+                if (term not in full_entities_dict): #These are vocab terms that did not show up in a cluster but are present in bootstrap list
+                    lc_term = term.lower()
+                    counts_str = len(self.bootstrap_entities[lc_term])*"0/"
+                    fp.write('/'.join(self.bootstrap_entities[lc_term]) + ' ' + counts_str.rstrip('/') + ' ' + term + '\n') #Note the term output is case sensitive. Just the indexed version is case insenstive
+                    continue
                 out_entity_dict = {}
                 for entity in full_entities_dict[term]:
                     assert(entity not in out_entity_dict)
@@ -290,14 +310,58 @@ class BertEmbeds:
                     fp.write(entity_str + ' ' + count_str + ' ' + term + "\n")
             
         
+    def sort_and_consolidate_inferred_entities_file(self,untagged_items_dict):
+            for term in untagged_items_dict:
+                out_entity_dict = {}
+                for entity in untagged_items_dict[term]:
+                    assert(entity not in out_entity_dict)
+                    out_entity_dict[entity] = untagged_items_dict[term][entity]
+                sorted_d = OrderedDict(sorted(out_entity_dict.items(), key=lambda kv: kv[1], reverse=True))
+                first = next(iter(sorted_d))
+                untagged_items_dict[term] = {first:sorted_d[first]} #Just pick the first entity 
+
+            ci_untagged_items_dict = OrderedDict()
+            for term in untagged_items_dict:
+                lc_term = term.lower()
+                if (lc_term not in ci_untagged_items_dict):
+                    ci_untagged_items_dict[lc_term] =  OrderedDict()
+                for entity in untagged_items_dict[term]:
+                    if (entity not in ci_untagged_items_dict[lc_term]):
+                        ci_untagged_items_dict[lc_term][entity] = untagged_items_dict[term][entity]
+                    else:
+                        ci_untagged_items_dict[lc_term][entity] += untagged_items_dict[term][entity]
+            return ci_untagged_items_dict
+
        
+    def create_inferred_entities_file(self,untagged_items_dict):
+        with open("inferred.txt","w") as fp:
+            untagged_items_dict = self.sort_and_consolidate_inferred_entities_file(untagged_items_dict)
+            for term in untagged_items_dict:
+                out_entity_dict = {}
+                for entity in untagged_items_dict[term]:
+                    assert(entity not in out_entity_dict)
+                    out_entity_dict[entity] = untagged_items_dict[term][entity]
+                sorted_d = OrderedDict(sorted(out_entity_dict.items(), key=lambda kv: kv[1], reverse=True))
+                entity_str = ""
+                count_str = ""
+                count_val = 0
+                for entity in sorted_d: 
+                    if (len(entity_str) == 0):
+                        entity_str = entity 
+                        count_str =  str(sorted_d[entity])
+                    else:
+                        entity_str += '/' +  entity 
+                        count_str +=  '/' + str(sorted_d[entity])
+                    count_val += int(sorted_d[entity])
+                if (len(entity_str) > 0):
+                    fp.write(entity_str + ' ' + count_str + ' ' + str(count_val) + ' ' + term + "\n")
    
 
-    def get_entity_type(self,arr,new_key,esupfp,top_k,min_strength):
+    def get_entity_type(self,arr,new_key,esupfp):
         e_dict = {} 
         #print("GET:",arr)
         for term in arr:
-            term = term.lower()
+            term = term.lower() #bootstrap entities is all lowercase. 
             if (term in self.bootstrap_entities):
                  entities = self.bootstrap_entities[term]
                  for entity in entities:
@@ -316,8 +380,6 @@ class BertEmbeds:
                esupfp.write(new_key + ' ' + str(sorted_d) + '\n')
                count = 0
                for k in sorted_d:
-                   if (sorted_d[k] < min_strength):
-                       break
                    if (len(ret_str) > 0):
                        ret_str += '/' + k
                        count_str += '/' + str(sorted_d[k])
@@ -326,8 +388,6 @@ class BertEmbeds:
                        count_str = str(sorted_d[k])
                    entities_dict[k] = int(sorted_d[k])
                    count += 1
-                   if (count >= top_k):
-                      break
         if (len(ret_str) <= 0):
             ret_str = "OTHER"
             count_str = str(len(arr))
@@ -777,7 +837,7 @@ def main():
                     print("Trapped exception")
                 sys.exit(-1)
             elif (val == "1"):
-                print("Enter Input threshold .5  works well for both pretraining and fine tuned. Enter 0 for adaptive thresholding")
+                print("Enter Input threshold .5  works well for both pretraining and fine tuned. Enter 0 for adaptive thresholding(0 is recommended)")
                 val = .5
                 tail = 10
                 try:
