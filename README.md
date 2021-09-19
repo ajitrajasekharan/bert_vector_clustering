@@ -86,13 +86,21 @@ In the new approach not all the vocab terms are labeled. Some percentage is (and
 The labeled subset is used to label other terms in a cluster.
 
 So the new approach is, 
-1) For each term,when clustering, capture the histogram of label elements across clusters. Label picking from clustering is still done with 
-thresholding.
-2) Then for each term in a cluster, confirm the manual label if any for that term (except OTHER) is one of the dominant cluster labels too.  If it not, do not include that term label as part of the cluster label  - it is equivalent to noise in that cluster. 
-    If a manual label is absent for that term, which means it is an OTHER, then inherit the predominant cluster labels.
-2) Ensembling for a term across models simply does a union of labels and their counts, just as we do when we aggregate labels for a term across clusters for a single model
+1) For each term,when clustering, capture the histogram of label elements across clusters. 
+2) Then for each term in a cluster, aggregate the number of times an entity is mentioned for each term that is present in the bootstrap list **only**.  
+3) For terms in the bootstrap list and part of vocab, but not present in cluster, just pick the manual label for term with 0 counts.
+4) For terms that are not in bootstrap cluster, separately aggregate an inferred list. At the end this is sorted and manually examined for further manual labeling. This labeling process is assisted by the inferred entity labels for a term by virtue of the clusters it is part of.  
+5) Output the entire vocab file with entity info for each term. Terms that occurred in bootsrap file and in clusters will have entities reordered by the clustering process. Terms that occured in bootstrap file but not in clusters will inherit manual labels as is without any reordering or count information. Terms tha did not occurr in bootstrap file and showed up in clusters will be output as an inferred entities list for futher manual labeling (at least the top frequence ones). Terms that did not occurr in bootstrap and and did not occur in clusters, but just present in vocab will be tagged "OTHER".
+6) Note while bootstrap entities are case insensitive, clustering is on case sensitive terms. So even if entiteis for a cased and uncased version of a term are present together in bootstrap file, they separate out in output with different ordering of the entities based on the clusters they occur. Example is eGFR and EGFR.
+For instance, if the bootstrap list order for the case insenstive version of egfr is
+GENE/LAB_PROCEDURE/PROTEIN/RECEPTOR egfr
 
-The advantage of clustering is, in addition to not having to label all terms in a vocab, manual/automated labeling can be noisy. Clustering helps reduce that noise.
+after clustering (in this case vocab contains eGFR and EGFR) the cased variations separate and have different orders and cluster counts
+GENE/PROTEIN/LAB_PROCEDURE/RECEPTOR 134/36/23/10 EGFR
+
+LAB_PROCEDURE/GENE/PROTEIN/RECEPTOR 8/7/5/3 eGFR
+
+In essence clustering reorders the manuaally labeled entities for a term into the different context independent meanings of the term, based on the cased versions of the term in the vocabulary.
 
 # License
 
