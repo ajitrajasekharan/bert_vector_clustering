@@ -696,7 +696,7 @@ class BertEmbeds:
     def find_entities(self,words):
         entities = self.labels_dict
         lc_entities = self.lc_labels_dict
-        words = self.filter_glue_words(words)
+        #words = self.filter_glue_words(words) #do not filter glue words anymore. Let them pass through
         ret_arr = []
         for word in words:
             l_word = word.lower()
