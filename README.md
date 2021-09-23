@@ -103,6 +103,10 @@ after clustering (in this case vocab contains eGFR and EGFR) the cased variation
 
 In essence clustering reorders the manuaally labeled entities for a term into the different context independent meanings of the term, based on the cased versions of the term in the vocabulary.
 
+# bootstrap labeling
+
+When starting in a new domain with no labels, start with an empty labels.txt and bootstrap_entities.txt.  Cluster (run.sh with option 1 folllowed by 0) and then examine cluster pivots to label them. Then rerun clustering and select candidates from inferred.txt. Add this to bootstrap_entities.txt list and repeat.
+
 # License
 
 This repository is covered by MIT license. 
