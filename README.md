@@ -103,6 +103,12 @@ after clustering (in this case vocab contains eGFR and EGFR) the cased variation
 
 In essence clustering reorders the manuaally labeled entities for a term into the different context independent meanings of the term, based on the cased versions of the term in the vocabulary.
 
+# bootstrap labeling
+
+When starting in a new domain with no labels, start with an empty labels.txt and bootstrap_entities.txt.  Cluster (run.sh with option 1 folllowed by 0) and then examine cluster pivots to label them. Then rerun clustering and select candidates from inferred.txt. Add this to bootstrap_entities.txt list and repeat. 
+
+Note the bootstrap labeling addresses the labeling of terms that appear in clusters. However, there may be terms that are not clustered (singletones/empty). It might be worthwhile labeling at least some of these manually since they could appear in run time contexts as neigbors. In practice, we potneitally could for the most part get away without this, but it is worth keeping this mind to improve performance say for unsupervised NER.
+
 # License
 
 This repository is covered by MIT license. 
