@@ -8,12 +8,19 @@ import pdb
 def get_stats(file_name,index,stats_dict):
     with open(file_name,"r") as fp:
         labels_dict = {}
+        line_count = 0
         for  line in fp:
             line = line.split()
             if (len(line) >= 2):
+                if (line[0] == "_singletons_" or line[0] == "_empty_"):
+                    continue
                 label = line[index]
-                labels_arr = label.split('/')
+                labels_arr = label.rstrip('/').split('/')
+                line_count += 1
                 for curr_label in labels_arr:
+                    if (len(curr_label) == 0):
+                        print("check bootstrap file creation. Empty labels")
+                        pdb.set_trace()
                     if (curr_label not in labels_dict):
                         labels_dict[curr_label]  = 1
                     else:
@@ -28,7 +35,7 @@ def get_stats(file_name,index,stats_dict):
                 print(i,final_sorted[i])
                 if (i not in stats_dict):
                     stats_dict[i] = 1
-        print("SINGLETONS",singletons_count)
+        #print("SINGLETONS",singletons_count)
 
 
 
@@ -40,10 +47,9 @@ if __name__== "__main__":
         file_name = sys.argv[1]
     stats_dict = {}
     get_stats(file_name,0,stats_dict)
-    print()
     #print("SUB ENTITY STATS")
     #get_stats(file_name,1,stats_dict)
     with open("stats_dict.txt","w") as fp:
         for term in stats_dict:
-            fp.write(term + "\n")
+            fp.write(term  + "\n")
 

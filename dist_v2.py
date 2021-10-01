@@ -73,7 +73,7 @@ def consolidate_labels(existing_node,new_labels,new_counts):
             ret_counts_str += '/' +  str(sorted_d[key])
         count += 1
     return {"label":ret_labels_str,"counts":ret_counts_str}
-        
+
 
 
 
@@ -91,7 +91,7 @@ def read_labels(labels_file):
                 if (lc_term in lc_terms_dict):
                      lc_terms_dict[lc_term] = consolidate_labels(lc_terms_dict[lc_term],term[0],term[1])
                 else:
-                     lc_terms_dict[lc_term] = {"label":term[0],"counts":term[1]} 
+                     lc_terms_dict[lc_term] = {"label":term[0],"counts":term[1]}
                 count += 1
             else:
                 print("Invalid line:",term)
@@ -137,7 +137,7 @@ def read_terms(terms_file):
     return terms_dict
 
 def is_filtered_term(key): #Words selector. skiping all unused and special tokens
-    if (IGNORE_CONTINUATIONS): 
+    if (IGNORE_CONTINUATIONS):
         return True if (str(key).startswith('#') or str(key).startswith('[')) else False
     else:
         return True if (str(key).startswith('[')) else False
@@ -173,7 +173,7 @@ class BertEmbeds:
         if (normalize):
             vec_a = vec_a/np.linalg.norm(vec_a,axis=0) #Norm is along axis 0 - rows
             vec_a = vec_a.T #vec_a shape becomes (,1024)
-            similarity_matrix = np.inner(vec_a,vec_a) 
+            similarity_matrix = np.inner(vec_a,vec_a)
         end = time.time()
         time_val = (end-start)*1000
         print("Similarity matrix computation complete.Elapsed:",time_val/(1000*60)," minutes")
@@ -279,8 +279,8 @@ class BertEmbeds:
                     full_entities_dict[term][entity] = curr_entities_dict[entity]
                 else:
                     full_entities_dict[term][entity] += curr_entities_dict[entity]
-               
-            
+
+
     def create_entity_labels_file(self,full_entities_dict):
         with open("labels.txt","w") as fp:
             for term in self.terms_dict:
@@ -299,17 +299,17 @@ class BertEmbeds:
                 sorted_d = OrderedDict(sorted(out_entity_dict.items(), key=lambda kv: kv[1], reverse=True))
                 entity_str = ""
                 count_str = ""
-                for entity in sorted_d: 
+                for entity in sorted_d:
                     if (len(entity_str) == 0):
-                        entity_str = entity 
+                        entity_str = entity
                         count_str =  str(sorted_d[entity])
                     else:
-                        entity_str += '/' +  entity 
+                        entity_str += '/' +  entity
                         count_str +=  '/' + str(sorted_d[entity])
                 if (len(entity_str) > 0):
                     fp.write(entity_str + ' ' + count_str + ' ' + term + "\n")
-            
-        
+
+
     def sort_and_consolidate_inferred_entities_file(self,untagged_items_dict):
             for term in untagged_items_dict:
                 out_entity_dict = {}
@@ -318,7 +318,7 @@ class BertEmbeds:
                     out_entity_dict[entity] = untagged_items_dict[term][entity]
                 sorted_d = OrderedDict(sorted(out_entity_dict.items(), key=lambda kv: kv[1], reverse=True))
                 first = next(iter(sorted_d))
-                untagged_items_dict[term] = {first:sorted_d[first]} #Just pick the first entity 
+                untagged_items_dict[term] = {first:sorted_d[first]} #Just pick the first entity
 
             ci_untagged_items_dict = OrderedDict()
             for term in untagged_items_dict:
@@ -332,7 +332,7 @@ class BertEmbeds:
                         ci_untagged_items_dict[lc_term][entity] += untagged_items_dict[term][entity]
             return ci_untagged_items_dict
 
-       
+
     def create_inferred_entities_file(self,untagged_items_dict):
         with open("inferred.txt","w") as fp:
             untagged_items_dict = self.sort_and_consolidate_inferred_entities_file(untagged_items_dict)
@@ -345,23 +345,23 @@ class BertEmbeds:
                 entity_str = ""
                 count_str = ""
                 count_val = 0
-                for entity in sorted_d: 
+                for entity in sorted_d:
                     if (len(entity_str) == 0):
-                        entity_str = entity 
+                        entity_str = entity
                         count_str =  str(sorted_d[entity])
                     else:
-                        entity_str += '/' +  entity 
+                        entity_str += '/' +  entity
                         count_str +=  '/' + str(sorted_d[entity])
                     count_val += int(sorted_d[entity])
                 if (len(entity_str) > 0):
                     fp.write(entity_str + ' ' + count_str + ' ' + str(count_val) + ' ' + term + "\n")
-   
+
 
     def get_entity_type(self,arr,new_key,esupfp):
-        e_dict = {} 
+        e_dict = {}
         #print("GET:",arr)
         for term in arr:
-            term = term.lower() #bootstrap entities is all lowercase. 
+            term = term.lower() #bootstrap entities is all lowercase.
             if (term in self.bootstrap_entities):
                  entities = self.bootstrap_entities[term]
                  for entity in entities:
@@ -394,7 +394,7 @@ class BertEmbeds:
         #print(ret_str)
         count_str += '/' + str(len(arr))
         return ret_str,count_str,entities_dict
-      
+
 
     def fixed_gen_pivot_graphs(self,threshold,count_limit):
         tokenize = False
@@ -475,13 +475,13 @@ class BertEmbeds:
             count += rev_sorted_d[k]
         return count,cosine_val
 
-        
+
 
 
     def gen_dist_for_vocabs(self):
         print("Random pick? (Full run will take approximately 3 hours) Y/n:")
         resp = input()
-        is_rand = (resp == "Y") 
+        is_rand = (resp == "Y")
         if (is_rand):
             print("Sampling run:")
         count = 1
@@ -559,13 +559,13 @@ class BertEmbeds:
             assert(0)
             tokenized_text = self.tokenizer.tokenize(text)
         else:
-            if (not text.startswith('[')): 
+            if (not text.startswith('[')):
                tokenized_text = text.split()
             else:
                tokenized_text = [text]
         indexed_tokens = self.tokenizer.convert_tokens_to_ids(tokenized_text)
         assert(len(indexed_tokens) == 1)
-        return indexed_tokens[0] 
+        return indexed_tokens[0]
 
 
 
@@ -700,7 +700,10 @@ class BertEmbeds:
         ret_arr = []
         for word in words:
             l_word = word.lower()
-            if (word in entities):
+            if l_word.isdigit():
+                ret_label = "MEASURE"
+                ret_counts = str(1)
+            elif (word in entities):
                 ret_label = entities[word]["label"]
                 ret_counts = entities[word]["counts"]
             elif (l_word in entities):
