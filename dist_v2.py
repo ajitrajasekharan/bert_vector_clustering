@@ -114,13 +114,9 @@ def read_entities(terms_file):
                 assert(len(nodes) == 2)
                 lc_node = nodes[1].lower()
                 if (lc_node in terms_dict):
-                    print("Term :" + lc_node +  ": already present in terms_dict. Do you want to skip and continue. Y for skip. Else abort")
-                    resp = input()
-                    if (resp == "y" or resp == "Y"):
-                        continue
-                    else:
-                        assert(0)
-                    #assert('/'.join(terms_dict[lc_node]) == nodes[0])
+                    pdb.set_trace()
+                    assert(0)
+                    assert('/'.join(terms_dict[lc_node]) == nodes[0])
                 terms_dict[lc_node] = nodes[0].split('/')
                 count += 1
     print("count of entities in ",terms_file,":", len(terms_dict))
@@ -718,7 +714,10 @@ class BertEmbeds:
                 ret_counts = lc_entities[l_word]["counts"]
             else:
                 ret_label = "OTHER"
-                ret_counts = "0"
+                ret_counts = "1"
+            if (ret_label == "OTHER"):
+                ret_label = "UNTAGGED_ENTITY"
+                ret_counts = "1"
             print(word,ret_label,ret_counts)
             ret_arr.append(ret_label)
             ret_arr.append(ret_counts)
