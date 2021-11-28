@@ -19,9 +19,10 @@ AMBIGUOUS = "AMB"
 MAX_VAL = 20
 TAIL_THRESH = 10
 
-BERT_TERMS_START=106
+#BERT_TERMS_START=106
 UNK_ID = 1
-IGNORE_CONTINUATIONS=True
+#IGNORE_CONTINUATIONS=True
+IGNORE_CONTINUATIONS=False
 USE_PRESERVE=True
 
 try:
@@ -136,11 +137,15 @@ def read_terms(terms_file):
     print("count of tokens in ",terms_file,":", len(terms_dict))
     return terms_dict
 
-def is_filtered_term(key): #Words selector. skiping all unused and special tokens
+def is_subword(key):
+        return True if str(key).startswith('#')  else False
+
+def is_filtered_term(key): #Words selector. skip special tokens
     if (IGNORE_CONTINUATIONS):
-        return True if (str(key).startswith('#') or str(key).startswith('[')) else False
+        return True if (is_subword(key) or str(key).startswith('[')) else False
     else:
         return True if (str(key).startswith('[')) else False
+
 
 def filter_2g(term,preserve_dict):
     if (USE_PRESERVE):
@@ -189,6 +194,10 @@ class BertEmbeds:
 
 
     def adaptive_gen_pivot_graphs(self):
+        '''
+            Generate clusters for terms in vocab
+            This is used for unsupervised NER
+        '''
         tokenize = False
         count = 1
         total = len(self.terms_dict)
@@ -202,12 +211,14 @@ class BertEmbeds:
         dfp = open("adaptive_debug_pivots.txt","w")
         esupfp = open("entity_support.txt","w")
         for key in self.terms_dict:
-            if (is_filtered_term(key) or count <= BERT_TERMS_START):
+            #if (is_filtered_term(key) or count <= BERT_TERMS_START):
+            if (is_filtered_term(key)):
                 count += 1
                 continue
             count += 1
             #print(":",key)
-            if (key in picked_dict or len(key) <= 2):
+            #if (key in picked_dict or len(key) <= 2):
+            if (key in picked_dict):
                 continue
             print("Processing ",count," of ",total)
             picked_dict[key] = 1
@@ -216,7 +227,8 @@ class BertEmbeds:
             sorted_d = self.get_terms_above_threshold(key,threshold,tokenize)
             arr = []
             for k in sorted_d:
-                if (is_filtered_term(k) or filter_2g(k,self.preserve_dict)):
+                #if (is_filtered_term(k) or filter_2g(k,self.preserve_dict)):
+                if (is_filtered_term(k)):
                     picked_dict[k] = 1
                     continue
                 picked_dict[k] = 1
@@ -264,16 +276,17 @@ class BertEmbeds:
             else:
                 if (term not in untagged_items_dict):
                     untagged_items_dict[term] = OrderedDict()
-                    for entity in curr_entities_dict:
-                        if (entity not in untagged_items_dict[term]):
-                            untagged_items_dict[term][entity] = curr_entities_dict[entity]
-                        else:
-                            untagged_items_dict[term][entity] += curr_entities_dict[entity]
+                for entity in curr_entities_dict:
+                    if (entity not in untagged_items_dict[term]):
+                        untagged_items_dict[term][entity] = curr_entities_dict[entity]
+                    else:
+                        untagged_items_dict[term][entity] += curr_entities_dict[entity]
                 continue
+            #We come here only for terms that were present in the bootstrap list
             if term not in full_entities_dict: #This is case sensitive. We want vocab entries eGFR and EGFR to pick up separate weights for their entities
                 full_entities_dict[term] = OrderedDict()
             for entity in curr_entities_dict:
-                if  (entity not in term_entities): #aggregate counts only for entities present for this term in original manual harvesting list
+                if  (entity not in term_entities): #aggregate counts only for entities present for this term in original manual harvesting list(bootstrap list)
                     continue
                 if (entity not  in full_entities_dict[term]):
                     full_entities_dict[term][entity] = curr_entities_dict[entity]
@@ -318,7 +331,9 @@ class BertEmbeds:
                     out_entity_dict[entity] = untagged_items_dict[term][entity]
                 sorted_d = OrderedDict(sorted(out_entity_dict.items(), key=lambda kv: kv[1], reverse=True))
                 first = next(iter(sorted_d))
-                untagged_items_dict[term] = {first:sorted_d[first]} #Just pick the first entity
+                #untagged_items_dict[term] = {first:sorted_d[first]} #Just pick the first entity
+                untagged_items_dict[term] = sorted_d
+
 
             ci_untagged_items_dict = OrderedDict()
             for term in untagged_items_dict:
