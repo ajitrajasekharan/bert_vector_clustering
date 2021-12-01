@@ -18,11 +18,11 @@ OTHER_TAG = "OTHER"
 AMBIGUOUS = "AMB"
 MAX_VAL = 20
 TAIL_THRESH = 10
+SUBWORD_COS_THRESHOLD = .1
+MAX_SUBWORD_PICKS = 20
 
-#BERT_TERMS_START=106
 UNK_ID = 1
-#IGNORE_CONTINUATIONS=True
-IGNORE_CONTINUATIONS=False
+IGNORE_CONTINUATIONS=True
 USE_PRESERVE=True
 
 try:
@@ -140,12 +140,11 @@ def read_terms(terms_file):
 def is_subword(key):
         return True if str(key).startswith('#')  else False
 
-def is_filtered_term(key): #Words selector. skip special tokens
+def is_filtered_term(key): #Words selector. skiping all unused and special tokens
     if (IGNORE_CONTINUATIONS):
         return True if (is_subword(key) or str(key).startswith('[')) else False
     else:
         return True if (str(key).startswith('[')) else False
-
 
 def filter_2g(term,preserve_dict):
     if (USE_PRESERVE):
@@ -192,11 +191,90 @@ class BertEmbeds:
             names = self.tokenizer.convert_ids_to_tokens([i])
             print(names[0])
 
+    def labeled_term(self,k):
+        if (k not in self.bootstrap_entities):
+            return False
+        labels = self.bootstrap_entities[k]
+        if (len(labels) > 1):
+            return True
+        assert(len(labels) == 1)
+        if (labels[0] == "UNTAGGED_ENTITY"):
+            return False
+        return True
+
+    def subword_clustering(self):
+        '''
+               Generate clusters for terms in vocab
+               This is used for unsupervised NER (with subword usage)
+        '''
+        tokenize = False
+        count = 1
+        total = len(self.terms_dict)
+        pivots_dict = OrderedDict()
+        singletons_arr = []
+        full_entities_dict = OrderedDict()
+        untagged_items_dict = OrderedDict()
+        empty_arr = []
+        total = len(self.terms_dict)
+        dfp = open("adaptive_debug_pivots.txt","w")
+        esupfp = open("entity_support.txt","w")
+        for key in self.terms_dict:
+            if (key.startswith('[') or len(key) < 2):
+                count += 1
+                continue
+            count += 1
+            #print(":",key)
+            print("Processing: ",key,"count:",count," of ",total)
+            temp_sorted_d,dummy = self.get_distribution_for_term(key,False)
+            sorted_d = self.get_terms_above_threshold(key,SUBWORD_COS_THRESHOLD,tokenize)
+            arr = []
+            for k in sorted_d:
+                if (is_subword(k)):
+                    continue
+                if (not self.labeled_term(k.lower())):
+                    continue
+                arr.append(k)
+                if (len(arr) > MAX_SUBWORD_PICKS):
+                    break
+            if (len(arr) > MAX_SUBWORD_PICKS/2):
+                max_mean_term,max_mean, std_dev,s_dict = self.find_pivot_subgraph(arr,tokenize)
+                if (max_mean_term not in pivots_dict):
+                    new_key  = max_mean_term
+                else:
+                    print("****Term already a pivot node:",max_mean_term, "key  is :",key)
+                    new_key  = max_mean_term + "++" + key
+                pivots_dict[new_key] = {"key":new_key,"orig":key,"mean":max_mean,"terms":arr}
+                entity_type,entity_counts,curr_entities_dict = self.get_entity_type(arr,new_key,esupfp)
+                self.aggregate_entities_for_terms(arr,curr_entities_dict,full_entities_dict,untagged_items_dict)
+                print(entity_type,entity_counts,new_key,max_mean,std_dev,arr)
+                dfp.write(entity_type + " " + entity_counts + " " + new_key + " " + new_key + " " + new_key+" "+key+" "+str(max_mean)+" "+ str(std_dev) + " " +str(arr)+"\n")
+            else:
+                if (len(arr) != 0):
+                    print("***Sparse arr for term:",key)
+                    singletons_arr.append(key)
+                else:
+                    print("***Empty arr for term:",key)
+                    empty_arr.append(key)
+            #if (count >= 500):
+            #    break
+
+        dfp.write(SINGLETONS_TAG + str(singletons_arr) + "\n")
+        dfp.write(EMPTY_TAG + str(empty_arr) + "\n")
+        with open("pivots.json","w") as fp:
+            fp.write(json.dumps(pivots_dict))
+        with open("pivots.txt","w") as fp:
+            for k in pivots_dict:
+                fp.write(k + '\n')
+        dfp.close()
+        esupfp.close()
+        self.create_entity_labels_file(full_entities_dict)
+        self.create_inferred_entities_file(untagged_items_dict)
+
 
     def adaptive_gen_pivot_graphs(self):
         '''
-            Generate clusters for terms in vocab
-            This is used for unsupervised NER
+               Generate clusters for terms in vocab
+               This is used for unsupervised NER
         '''
         tokenize = False
         count = 1
@@ -211,14 +289,12 @@ class BertEmbeds:
         dfp = open("adaptive_debug_pivots.txt","w")
         esupfp = open("entity_support.txt","w")
         for key in self.terms_dict:
-            #if (is_filtered_term(key) or count <= BERT_TERMS_START):
             if (is_filtered_term(key)):
                 count += 1
                 continue
             count += 1
             #print(":",key)
-            #if (key in picked_dict or len(key) <= 2):
-            if (key in picked_dict):
+            if (key in picked_dict or len(key) <= 2):
                 continue
             print("Processing ",count," of ",total)
             picked_dict[key] = 1
@@ -227,8 +303,7 @@ class BertEmbeds:
             sorted_d = self.get_terms_above_threshold(key,threshold,tokenize)
             arr = []
             for k in sorted_d:
-                #if (is_filtered_term(k) or filter_2g(k,self.preserve_dict)):
-                if (is_filtered_term(k)):
+                if (is_filtered_term(k) or filter_2g(k,self.preserve_dict)):
                     picked_dict[k] = 1
                     continue
                 picked_dict[k] = 1
@@ -422,7 +497,7 @@ class BertEmbeds:
         total = len(self.terms_dict)
         dfp = open("debug_pivots.txt","w")
         for key in self.terms_dict:
-            if (is_filtered_term(key) or count <= BERT_TERMS_START):
+            if (is_filtered_term(key) ):
                 count += 1
                 continue
             count += 1
@@ -508,7 +583,7 @@ class BertEmbeds:
         tail_lengths = OrderedDict()
         total_tail_length = 0
         for key in self.terms_dict:
-            if (is_filtered_term(key) or count <= BERT_TERMS_START):
+            if (is_filtered_term(key) ):
                 count += 1
                 continue
             if (is_rand):
@@ -849,7 +924,7 @@ def main():
         b_embeds =BertEmbeds(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],True,True,sys.argv[6],sys.argv[7],sys.argv[8],sys.argv[9],sys.argv[10]) #True - for cache embeds; normalize - True
         display_threshold = .4
         while (True):
-            print("Enter test type (0-gen cum dist for vocabs; 1-generate clusters (will take approx 2 hours);  2-neigh/3-pivot graph/4-bipartite/5-Entity test: q to quit")
+            print("Enter test type (0-gen cum dist for vocabs; 1-generate clusters (will take approx 2 hours);  2-neigh/3-pivot graph/4-bipartite/5-Entity test/6-Subword neighbor cluster: q to quit")
             val = input()
             if (val == "0"):
                 try:
@@ -882,6 +957,8 @@ def main():
                 impl_entities(b_embeds,tokenize,display_threshold)
             elif (val == 'q'):
                 sys.exit(-1)
+            elif (val == "6"):
+                 b_embeds.subword_clustering()
             else:
                 print("invalid option")
 
