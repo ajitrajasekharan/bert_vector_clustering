@@ -18,7 +18,7 @@ OTHER_TAG = "OTHER"
 AMBIGUOUS = "AMB"
 MAX_VAL = 20
 TAIL_THRESH = 10
-SUBWORD_COS_THRESHOLD = .1
+SUBWORD_COS_THRESHOLD = .2
 MAX_SUBWORD_PICKS = 20
 
 UNK_ID = 1
@@ -224,38 +224,34 @@ class BertEmbeds:
                 continue
             count += 1
             #print(":",key)
-            print("Processing: ",key,"count:",count," of ",total)
-            temp_sorted_d,dummy = self.get_distribution_for_term(key,False)
             sorted_d = self.get_terms_above_threshold(key,SUBWORD_COS_THRESHOLD,tokenize)
             arr = []
+            labeled_terms_count = 0
             for k in sorted_d:
-                if (is_subword(k)):
-                    continue
-                if (not self.labeled_term(k.lower())):
-                    continue
+                if (self.labeled_term(k.lower())):
+                    labeled_terms_count += 1
                 arr.append(k)
-                if (len(arr) > MAX_SUBWORD_PICKS):
+                if (labeled_terms_count >= MAX_SUBWORD_PICKS):
                     break
-            if (len(arr) > MAX_SUBWORD_PICKS/2):
+            print("Processing: ",key,"count:",count," of ",total)
+            if (len(arr) >  0):
                 max_mean_term,max_mean, std_dev,s_dict = self.find_pivot_subgraph(arr,tokenize)
                 if (max_mean_term not in pivots_dict):
                     new_key  = max_mean_term
                 else:
                     print("****Term already a pivot node:",max_mean_term, "key  is :",key)
                     new_key  = max_mean_term + "++" + key
-                pivots_dict[new_key] = {"key":new_key,"orig":key,"mean":max_mean,"terms":arr}
+                #pivots_dict[new_key] = {"key":new_key,"orig":key,"mean":max_mean,"terms":arr}
+                pivots_dict[key] = {"key":new_key,"orig":key,"mean":max_mean,"terms":arr}
                 entity_type,entity_counts,curr_entities_dict = self.get_entity_type(arr,new_key,esupfp)
                 self.aggregate_entities_for_terms(arr,curr_entities_dict,full_entities_dict,untagged_items_dict)
                 print(entity_type,entity_counts,new_key,max_mean,std_dev,arr)
                 dfp.write(entity_type + " " + entity_counts + " " + new_key + " " + new_key + " " + new_key+" "+key+" "+str(max_mean)+" "+ str(std_dev) + " " +str(arr)+"\n")
             else:
-                if (len(arr) != 0):
-                    print("***Sparse arr for term:",key)
-                    singletons_arr.append(key)
-                else:
-                    print("***Empty arr for term:",key)
-                    empty_arr.append(key)
-            #if (count >= 500):
+                print("***Empty arr for term:",key)
+                empty_arr.append(key)
+            #if (count >= 350):
+            #    pdb.set_trace()
             #    break
 
         dfp.write(SINGLETONS_TAG + str(singletons_arr) + "\n")
@@ -268,13 +264,12 @@ class BertEmbeds:
         dfp.close()
         esupfp.close()
         self.create_entity_labels_file(full_entities_dict)
-        self.create_inferred_entities_file(untagged_items_dict)
 
 
     def adaptive_gen_pivot_graphs(self):
         '''
                Generate clusters for terms in vocab
-               This is used for unsupervised NER
+               This was used for unsupervised NER.Not used anymore
         '''
         tokenize = False
         count = 1
@@ -346,23 +341,24 @@ class BertEmbeds:
         if (len(curr_entities_dict) == 0):
             return
         for term in arr:
-            if (term.lower() in self.bootstrap_entities): #Note this is a case insensitive check
-                term_entities = self.bootstrap_entities[term.lower()]
-            else:
-                if (term not in untagged_items_dict):
-                    untagged_items_dict[term] = OrderedDict()
-                for entity in curr_entities_dict:
-                    if (entity not in untagged_items_dict[term]):
-                        untagged_items_dict[term][entity] = curr_entities_dict[entity]
-                    else:
-                        untagged_items_dict[term][entity] += curr_entities_dict[entity]
-                continue
-            #We come here only for terms that were present in the bootstrap list
+            #if (term.lower() in self.bootstrap_entities): #Note this is a case insensitive check
+            #    term_entities = self.bootstrap_entities[term.lower()]
+            #else:
+            #    if (term not in untagged_items_dict):
+            #        untagged_items_dict[term] = OrderedDict()
+            #    for entity in curr_entities_dict:
+            #        if (entity not in untagged_items_dict[term]):
+            #            untagged_items_dict[term][entity] = curr_entities_dict[entity]
+            #        else:
+            #            untagged_items_dict[term][entity] += curr_entities_dict[entity]
+            #    continue
+            #We come here only for terms that were present in the bootstrap list. 
+            #Correction. We come here for all terms.  since above set is commented
             if term not in full_entities_dict: #This is case sensitive. We want vocab entries eGFR and EGFR to pick up separate weights for their entities
                 full_entities_dict[term] = OrderedDict()
             for entity in curr_entities_dict:
-                if  (entity not in term_entities): #aggregate counts only for entities present for this term in original manual harvesting list(bootstrap list)
-                    continue
+                #if  (entity not in term_entities): #aggregate counts only for entities present for this term in original manual harvesting list(bootstrap list)
+                #    continue
                 if (entity not  in full_entities_dict[term]):
                     full_entities_dict[term][entity] = curr_entities_dict[entity]
                 else:
@@ -924,7 +920,8 @@ def main():
         b_embeds =BertEmbeds(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],True,True,sys.argv[6],sys.argv[7],sys.argv[8],sys.argv[9],sys.argv[10]) #True - for cache embeds; normalize - True
         display_threshold = .4
         while (True):
-            print("Enter test type (0-gen cum dist for vocabs; 1-generate clusters (will take approx 2 hours);  2-neigh/3-pivot graph/4-bipartite/5-Entity test/6-Subword neighbor cluster: q to quit")
+            print("Enter test type (0-gen cum dist for vocabs; 1-generate clusters (will take approx 2 hours);  2-neigh/3-pivot graph/4-bipartite/5-Entity test/6-Subword neighbor cluster (use this for NER): q to quit")
+            print("**** Use option 6 for SSL NER clustering. All other clustering options listed above yield suboptimal clustering and maginfication ***")
             val = input()
             if (val == "0"):
                 try:
