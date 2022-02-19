@@ -7,6 +7,7 @@ import traceback
 import string
 
 
+
 def read_labels_file(inp_file):
     terms_dict = OrderedDict()
     labels_dict = OrderedDict()
