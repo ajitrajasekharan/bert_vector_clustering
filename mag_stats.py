@@ -10,7 +10,10 @@ import string
 def read_labels_file(inp_file):
     terms_dict = OrderedDict()
     labels_dict = OrderedDict()
-    pivot_labels_dict = OrderedDict()
+    labels_strength_dict = OrderedDict()
+    total_count = 0
+    total_strength_count = 0
+    lc_vocab_dict = OrderedDict()
     with open(inp_file) as fp:
         for line in fp:
             line = line.rstrip("\n")
@@ -22,33 +25,33 @@ def read_labels_file(inp_file):
                 pdb.set_trace()
             assert(term not in terms_dict)
             terms_dict[term] = labels
+            lc_vocab_dict[term.lower()] = 1
             assert(len(labels) == len(label_counts))
-            first = True
             for label,count in zip(labels,label_counts):
-                if (first):
-                    first = False
-                    if (label not in pivot_labels_dict):
-                        pivot_labels_dict[label] = 1
-                    else:
-                        pivot_labels_dict[label] += 1
                 if (label not in labels_dict):
-                    labels_dict[label] = int(count)
+                    labels_strength_dict[label] = int(count)
+                    labels_dict[label] = 1
                 else:
-                    labels_dict[label] += int(count)
+                    labels_dict[label] += 1
+                    labels_strength_dict[label] += int(count)
+                total_count += 1
+                total_strength_count += int(count)
     sorted_d = OrderedDict(sorted(labels_dict.items(), key=lambda kv: kv[1], reverse=True))
-    pivot_sorted_d = OrderedDict(sorted(pivot_labels_dict.items(), key=lambda kv: kv[1], reverse=True))
-    return terms_dict,sorted_d,pivot_sorted_d
+    return terms_dict,sorted_d,total_count,lc_vocab_dict,labels_strength_dict,total_strength_count
 
 
-def read_bs_file(inp_file):
+def read_bs_file(inp_file,vocab_names):
     terms_dict = OrderedDict()
     labels_dict = OrderedDict()
+    total_count = 0
     with open(inp_file) as fp:
         for line in fp:
             line = line.rstrip("\n")
             line = line.split()
             labels = line[0].split("/")
             term = line[1]
+            if (term not in vocab_names):
+                continue
             if (term in terms_dict):
                 pdb.set_trace()
             assert(term not in terms_dict)
@@ -58,8 +61,9 @@ def read_bs_file(inp_file):
                     labels_dict[label] = 1
                 else:
                     labels_dict[label] += 1
+                total_count += 1
     sorted_d = OrderedDict(sorted(labels_dict.items(), key=lambda kv: kv[1], reverse=True))
-    return terms_dict,sorted_d
+    return terms_dict,sorted_d,total_count
 
 def get_counts(inp_dict):
     mag_terms_count = 0
@@ -74,21 +78,23 @@ def gen_mag_stats(params):
     bs_file = params.bootstrap_file
     labels_file = params.labels_file
     output_file = params.output_file
-    bs_terms, bs_labels = read_bs_file(bs_file)
-    mag_terms,mag_labels,pivot_mag_labels = read_labels_file(labels_file)
+    mag_terms,mag_labels,label_total_count,lc_vocab_dict,labels_strength,total_strength_count = read_labels_file(labels_file)
+    bs_terms, bs_labels,bs_total_count = read_bs_file(bs_file,lc_vocab_dict)
     orig_terms_count = get_counts(bs_terms)
     mag_terms_count = get_counts(mag_terms)
     fp = open(output_file,"w")
-    text = "{}\t{}\t{}".format(str(round(float(mag_terms_count)/orig_terms_count,2)),mag_terms_count,orig_terms_count)
+    text = "{}\t{}\t{}\t{}".format(len(mag_terms),mag_terms_count,orig_terms_count,str(round(float(mag_terms_count)/orig_terms_count,0)))
+    print(text)
+    fp.write(text + "\n")
+    text = "{}\t{}\t{}\t{}".format(label_total_count,total_strength_count,bs_total_count,str(round(float(total_strength_count)/bs_total_count,0)))
     print(text)
     fp.write(text + "\n")
     for key in mag_labels:
         if (key in bs_labels):
-            mag_key_count = pivot_mag_labels[key] if key in pivot_mag_labels else 0
-            text = "{}\t{}\t{}\t{}".format(key,bs_labels[key],mag_labels[key],mag_key_count)
+            text = "{}\t{}\t{}\t{}\t{}".format(key,mag_labels[key],labels_strength[key],bs_labels[key],str(round(float(labels_strength[key])/bs_labels[key],0)))
         else:
             assert(key == "OTHER")
-            text = "{}\t{}\t{}\t{}".format(key,0,mag_labels[key],pivot_mag_labels[key])
+            text = "{}\t{}\t{}\t{}\t{}".format(key,mag_labels[key],labels_strength[key],0,labels_strength[key])
         if (key != "UNTAGGED_ENTITY" and key != "OTHER"):
             print(text)
             fp.write(text + "\n")
