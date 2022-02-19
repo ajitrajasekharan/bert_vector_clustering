@@ -73,6 +73,20 @@ def get_counts(inp_dict):
         mag_terms_count += 1
     return mag_terms_count
 
+def find_predominant_entity(inp_dict):
+    predom_dict = OrderedDict()
+    for key in inp_dict:
+        if (len(inp_dict[key]) == 1 and (inp_dict[key][0] == "OTHER" or inp_dict[key][0] == "UNTAGGED_ENTITY")):
+            continue
+        labels = inp_dict[key]
+        for label in labels:
+            if (label != "OTHER" and label != "UNTAGGED_ENTITY"):
+                if (label not in predom_dict):
+                    predom_dict[label] = 1
+                else:
+                    predom_dict[label] += 1
+                break
+    return predom_dict
 
 def gen_mag_stats(params):
     bs_file = params.bootstrap_file
@@ -82,19 +96,25 @@ def gen_mag_stats(params):
     bs_terms, bs_labels,bs_total_count = read_bs_file(bs_file,lc_vocab_dict)
     orig_terms_count = get_counts(bs_terms)
     mag_terms_count = get_counts(mag_terms)
+    predom_entity_dict = find_predominant_entity(mag_terms)
     fp = open(output_file,"w")
-    text = "{}\t{}\t{}\t{}".format(len(mag_terms),mag_terms_count,orig_terms_count,str(round(float(mag_terms_count)/orig_terms_count,0)))
+    text = "{}\t{}\t{}\t{}\t\t\t".format(len(mag_terms),mag_terms_count,orig_terms_count,str(round(float(mag_terms_count)/orig_terms_count,0)))
     print(text)
     fp.write(text + "\n")
-    text = "{}\t{}\t{}\t{}".format(label_total_count,total_strength_count,bs_total_count,str(round(float(total_strength_count)/bs_total_count,0)))
+    text = "{}\t{}\t{}\t{}\t\t\t".format(label_total_count,total_strength_count,bs_total_count,str(round(float(total_strength_count)/bs_total_count,0)))
     print(text)
     fp.write(text + "\n")
     for key in mag_labels:
+        if (key in predom_entity_dict):
+            predom_entity = predom_entity_dict[key]
+        else:
+            predom_entity = 0
         if (key in bs_labels):
-            text = "{}\t{}\t{}\t{}\t{}".format(key,mag_labels[key],labels_strength[key],bs_labels[key],str(round(float(labels_strength[key])/bs_labels[key],0)))
+            
+            text = "{}\t{}\t{}\t{}\t{}\t{}".format(key,mag_labels[key],labels_strength[key],bs_labels[key],str(round(float(labels_strength[key])/bs_labels[key],0)),predom_entity)
         else:
             assert(key == "OTHER")
-            text = "{}\t{}\t{}\t{}\t{}".format(key,mag_labels[key],labels_strength[key],0,labels_strength[key])
+            text = "{}\t{}\t{}\t{}\t{}\t{}".format(key,mag_labels[key],labels_strength[key],0,labels_strength[key],predom_entity)
         if (key != "UNTAGGED_ENTITY" and key != "OTHER"):
             print(text)
             fp.write(text + "\n")
