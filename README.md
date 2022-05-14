@@ -4,7 +4,7 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 **Unsupervised training of BERT yields a model and context insenstive  word vectors. These word vectors are stored in pytorch_model.bin. This repository has simple utilities to extract those vectors, cluster them, etc.**
 
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)[Notebook](https://colab.research.google.com/github/ajitrajasekharan/bert_vector_clustering/blob/master/test_notebook.ipynb)]
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)[Notebook for fill mask prediction](https://colab.research.google.com/github/ajitrajasekharan/bert_vector_clustering/blob/master/test_notebook.ipynb)]
 
 
 [Medium post that uses this repository tools to cluster BERT's context insensitive word vectors for unsupervised NER](https://towardsdatascience.com/unsupervised-ner-using-bert-2d7af5f90b8a)
