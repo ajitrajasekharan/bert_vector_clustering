@@ -1,7 +1,7 @@
 ### bert_vector_clustering
 Clustering  BERT vocab vectors for downstream tasks like self-supervised [NER](https://github.com/ajitrajasekharan/unsupervised_NER.git) , sentence embeddings etc.
 
-**Self-supervised training of BERT yields a model and context insenstive  word vectors. These word vectors are stored in pytorch_model.bin. This repository has simple utilities to extract those vectors, cluster them for NER.**
+_Self-supervised training of BERT yields a model and context insenstive  word vectors. These word vectors are stored in pytorch_model.bin. This repository has simple utilities to extract those vectors, cluster them for NER._
 
 [Notebook for fill mask prediction](https://colab.research.google.com/github/ajitrajasekharan/bert_vector_clustering/blob/master/test_notebook.ipynb)  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ajitrajasekharan/bert_vector_clustering/blob/master/test_notebook.ipynb) 
 
@@ -35,7 +35,7 @@ _The output of this is bootstrap_entities.txt with entity signature generated fo
 
 Additionally 
 
-./run.sh 
+	./run.sh 
 
 has options to look at cumulative distribution of a model's words, find pivot among a set of terms, entity labeling,  etc.
 
