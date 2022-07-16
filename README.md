@@ -1,4 +1,4 @@
-# bert_vector_clustering
+### bert_vector_clustering
 Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsupervised sentence embeddings etc.
 
 **Unsupervised training of BERT yields a model and context insenstive  word vectors. These word vectors are stored in pytorch_model.bin. This repository has simple utilities to extract those vectors, cluster them, etc.**
@@ -10,7 +10,7 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 [Medium post that uses this repository tools to cluster BERT's context insensitive word vectors for unsupervised NER](https://towardsdatascience.com/unsupervised-ner-using-bert-2d7af5f90b8a)
 
 
-# Steps to cluster
+### Steps to cluster
 
 **Step 1a:**
 	Fetch a model and its vocab file using fetch_model.sh
@@ -41,7 +41,7 @@ Additionally
 
 has options to look at cumulative distribution of a model's words, find pivot among a set of terms, entity labeling,  etc.
 
-# Sample Outputs
+### Sample Outputs
 
 Output of clustering using bert_large_cased are in results directory
 
@@ -52,7 +52,7 @@ adaptive_debug_pivots.txt - output of run.sh with option 2
 labels.txt and stats_dict.txt - output of running extract_labels.sh
 
 
-# Steps to run this as a service for downstream unsupervised NER
+### Steps to run this as a service for downstream unsupervised NER
 
 ./run_dist_v2_server.sh 
 
@@ -67,7 +67,7 @@ To test this service
   The descriptors "cat dog cow horse" are typically the predictions for a masked word in a sentence. The results are all BIO-SPECIES or BIO capturing the entity type of the masked word. Refer to the medium post link above for more details
 
 
-# Mask tests
+### Mask tests
 
 To examine models output prediction scores for each position 
 
@@ -78,7 +78,17 @@ To examine the cosine values as well as bias values with output vectors *(which 
  - python graph_test.py `pwd`  `pwd`/bert_vectors.txt `pwd`/vocab.txt 1 1
 
 
-# Revision notes
+### Revision notes
+
+Jan 2022 
+This release magnifies the bootstrap labeling using clusterin and also includes subword labeling.
+
+The bootstrap file sample after clustering looks like this 
+
+GENE/PROTEIN/ENZYME/DRUG/PROTEIN_FAMILY/MOUSE_GENE/DISEASE/RECEPTOR/BIO_MOLECULE/LAB_PROCEDURE/MEASURE/MOUSE_PROTEIN_FAMILY/CELL_LINE/CELL/VIRUS/THERAPEUTIC_OR_PREVENTIVE_PROCEDURE/LOCATION/VIRAL_PROTEIN/METABOLITE/CHEMICAL_SUBSTANCE/ORGANIZATION/HAZARDOUS_OR_POISONOUS_SUBSTANCE/UNTAGGED_ENTITY/HORMONE/SURGICAL_AND_MEDICAL_PROCEDURES/CELL_COMPONENT/PERSON/DIAGNOSTIC_PROCEDURE/BACTERIUM/CELL_FUNCTION/BODY_PART_OR_ORGAN_COMPONENT/PHYSIOLOGIC_FUNCTION/ESTABLISHED_PHARMACOLOGIC_CLASS/MEDICAL_DEVICE/ORGAN_OR_TISSUE_FUNCTION/LAB_TEST_COMPONENT/BIO/SPECIES/CONGENITAL_ABNORMALITY/DRUG_ADJECTIVE/TIME/NUCLEOTIDE_SEQUENCE/MENTAL_OR_BEHAVIORAL_DYSFUNCTION/BODY_SUBSTANCE/CELL_OR_MOLECULAR_DYSFUNCTION/LEGAL/DISEASE_ADJECTIVE/SEQUENCE/CHEMICAL_CLASS/VITAMIN/DEVICE/PRODUCT/GENE_EXPRESSION_ADJECTIVE 634/225/175/165/148/147/141/126/99/73/54/44/44/36/30/27/24/24/20/19/19/19/18/15/14/10/9/9/9/7/7/6/6/5/4/4/4/3/3/2/2/2/2/1/1/1/1/1/1/1/1/1/1 EGFR
+
+DISEASE/GENE/UNTAGGED_ENTITY/LAB_PROCEDURE/MEASURE/PROTEIN/DRUG/RECEPTOR/DIAGNOSTIC_PROCEDURE/THERAPEUTIC_OR_PREVENTIVE_PROCEDURE/METABOLITE/SURGICAL_AND_MEDICAL_PROCEDURES/ORGAN_OR_TISSUE_FUNCTION/ORGANIZATION/CHEMICAL_SUBSTANCE/BODY_PART_OR_ORGAN_COMPONENT/LAB_TEST_COMPONENT/DISEASE_ADJECTIVE/ENZYME/PROTEIN_FAMILY/CELL_LINE/MOUSE_GENE/LOCATION/VIRUS/PERSON/MEDICAL_DEVICE/ESTABLISHED_PHARMACOLOGIC_CLASS/CELL/PRODUCT/TIME/HAZARDOUS_OR_POISONOUS_SUBSTANCE/HORMONE/DRUG_ADJECTIVE/MOUSE_PROTEIN_FAMILY/BIO/PHYSIOLOGIC_FUNCTION/CELL_FUNCTION/STUDY/SOCIAL_CIRCUMSTANCES/VIRAL_PROTEIN/CONGENITAL_ABNORMALITY/BIO_MOLECULE/BODY_SUBSTANCE/CELL_COMPONENT/BODY_LOCATION_OR_REGION/CHEMICAL_CLASS/ORGANISM_FUNCTION/BACTERIUM/MENTAL_OR_BEHAVIORAL_DYSFUNCTION/DEVICE/NUCLEOTIDE_SEQUENCE/VITAMIN/SPORT/CELL_OR_MOLECULAR_DYSFUNCTION/PRODUCT_ADJECTIVE/ORGANIZATION_ADJECTIVE/SEQUENCE/EDU 224/195/156/146/119/115/103/69/62/50/48/46/45/44/40/35/29/28/26/25/20/18/17/16/14/11/11/10/9/8/8/7/7/6/6/5/5/5/5/5/5/4/4/4/3/3/3/3/3/3/2/2/1/1/1/1/1/1 eGFR
+
 
 17 Sept 2021
 
@@ -107,11 +117,13 @@ after clustering (in this case vocab contains eGFR and EGFR) the cased variation
 
 In essence clustering reorders the manuaally labeled entities for a term into the different context independent meanings of the term, based on the cased versions of the term in the vocabulary.
 
-# bootstrap labeling
+### Bootstrap labeling for NER file generartion.
 
-When starting in a new domain with no labels, start with an empty labels.txt and bootstrap_entities.txt.  Cluster (run.sh with option 1 folllowed by 0) and then examine cluster pivots to label them. Then rerun clustering and select candidates from inferred.txt. Add this to bootstrap_entities.txt list and repeat. 
+To create bootstrap_entities.txt file from the manually labeled terms, execute run.sh with option 6.
 
-Note the bootstrap labeling addresses the labeling of terms that appear in clusters. However, there may be terms that are not clustered (singletones/empty). It might be worthwhile labeling at least some of these manually since they could appear in run time contexts as neigbors. In practice, we potneitally could for the most part get away without this, but it is worth keeping this mind to improve performance say for unsupervised NER.
+When starting in a new domain with no labels, start with an empty labels.txt and bootstrap_entities.txt.  Cluster (run.sh with option 6). Add this to bootstrap_entities.txt list and repeat. 
+
+When we start from sracth for a new domain we would need to label some terms as shown in this repo.
 
 # License
 
