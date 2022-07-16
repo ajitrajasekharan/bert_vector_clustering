@@ -7,7 +7,9 @@ _Self-supervised training of BERT yields a model and context insenstive  word ve
 
 
 
-[Medium post that uses this repository tools to cluster BERT's context insensitive word vectors for unsupervised NER](https://towardsdatascience.com/unsupervised-ner-using-bert-2d7af5f90b8a)
+[Medium post that uses this repository tools to cluster BERT's context insensitive word vectors for self-supervised NER](https://towardsdatascience.com/ssl-could-avoid-supervised-learning-fd049a27cd1b?sk=5ce99b4e052e7c16a64cc2a335f827e8)
+
+[Pervious version of this approach](https://towardsdatascience.com/unsupervised-ner-using-bert-2d7af5f90b8a)
 
 
 ### Steps to cluster
@@ -30,16 +32,16 @@ _Refer to huggingface model repository for other model URLs._
 	Execute run.sh with option 6
 
 
-_The output of this is bootstrap_entities.txt with entity signature generated for each term in the vocabulary including subwords. This can then be used for self-supervised [NER](https://github.com/ajitrajasekharan/unsupervised_NER.git) 
+_The output of this is bootstrap_entities.txt with entity signature generated for each term in the vocabulary including subwords. This can then be used for self-supervised [NER](https://github.com/ajitrajasekharan/unsupervised_NER.git)_
 
 
-Additionally 
+### Additional uses 
 
 	./run.sh 
 
 has options to look at cumulative distribution of a model's words, find pivot among a set of terms, entity labeling,  etc.
 
-### Sample Outputs
+#### Sample Outputs of additional uses
 
 Output of clustering using bert_large_cased are in results directory
 
@@ -48,6 +50,16 @@ cum_dist.txt - output of run.sh with option 1
 adaptive_debug_pivots.txt - output of run.sh with option 2
 
 labels.txt and stats_dict.txt - output of running extract_labels.sh
+
+#### Mask tests
+
+To examine models output prediction scores for each position 
+
+- python all_word_no_mask.py
+
+To examine the cosine values as well as bias values with output vectors *(which leads to the prediction scores displayed by all_word_no_mask.py)*  from the MLM head *(or topmost layer)*. To examine from MLM head PyTorch code would need to be patched as explained in this [post](https://towardsdatascience.com/swiss-army-knife-for-unsupervised-task-solving-26f9acf7c023?source=friends_link&sk=6d4bc39010d8026d4bf1a394a90c08f3)
+
+ - python graph_test.py `pwd`  `pwd`/bert_vectors.txt `pwd`/vocab.txt 1 1
 
 
 ### Steps to run this as a service for downstream unsupervised NER
@@ -65,22 +77,14 @@ To test this service
   The descriptors "cat dog cow horse" are typically the predictions for a masked word in a sentence. The results are all BIO-SPECIES or BIO capturing the entity type of the masked word. Refer to the medium post link above for more details
 
 
-### Mask tests
 
-To examine models output prediction scores for each position 
-
-- python all_word_no_mask.py
-
-To examine the cosine values as well as bias values with output vectors *(which leads to the prediction scores displayed by all_word_no_mask.py)*  from the MLM head *(or topmost layer)*. To examine from MLM head PyTorch code would need to be patched as explained in this [post](https://towardsdatascience.com/swiss-army-knife-for-unsupervised-task-solving-26f9acf7c023?source=friends_link&sk=6d4bc39010d8026d4bf1a394a90c08f3)
-
- - python graph_test.py `pwd`  `pwd`/bert_vectors.txt `pwd`/vocab.txt 1 1
 
 
 ### Revision notes
 
 **Jan 2022**
 
-This release magnifies the bootstrap labeling using clusterin and also includes subword labeling.
+This release magnifies the bootstrap labeling using clustering and also includes subword labeling.
 
 The bootstrap file sample after clustering looks like this 
 
@@ -116,10 +120,6 @@ after clustering (in this case vocab contains eGFR and EGFR) the cased variation
 
 In essence clustering reorders the manuaally labeled entities for a term into the different context independent meanings of the term, based on the cased versions of the term in the vocabulary.
 
-### Bootstrap labeling for NER file generartion.
-
-
-When starting in a new domain with no labels, start with an empty labels.txt and bootstrap_entities.txt.  Cluster (run.sh with option 6). Add this to bootstrap_entities.txt list and repeat. 
 
 When we start from scratch for a new domain we would need to label some terms as shown in this repo. A sample set is available for biomedical/phi/legal domain in  [NER](https://github.com/ajitrajasekharan/unsupervised_NER.git) 
 
