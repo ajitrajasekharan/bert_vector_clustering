@@ -1,7 +1,7 @@
 ### bert_vector_clustering
-Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsupervised sentence embeddings etc.
+Clustering  BERT vocab vectors for downstream tasks like self-supervised [NER](https://github.com/ajitrajasekharan/unsupervised_NER.git) , sentence embeddings etc.
 
-**Unsupervised training of BERT yields a model and context insenstive  word vectors. These word vectors are stored in pytorch_model.bin. This repository has simple utilities to extract those vectors, cluster them, etc.**
+**Self-supervised training of BERT yields a model and context insenstive  word vectors. These word vectors are stored in pytorch_model.bin. This repository has simple utilities to extract those vectors, cluster them for NER.**
 
 [Notebook for fill mask prediction](https://colab.research.google.com/github/ajitrajasekharan/bert_vector_clustering/blob/master/test_notebook.ipynb)  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ajitrajasekharan/bert_vector_clustering/blob/master/test_notebook.ipynb) 
 
@@ -12,27 +12,25 @@ Clustering learned BERT vectors for downstream tasks like unsupervised NER, unsu
 
 ### Steps to cluster
 
-**Step 1a:**
-	Fetch a model and its vocab file using fetch_model.sh
+**Step 1a:** Fetch a model and its vocab file using fetch_model.sh
 	
 	./fetch_model.sh
 	
-	This will download bert_large_cased and its vocab for testing.
-	
-	** Refer to huggingface model repositories for other model URLs. **
 
-**Step 1b:**
-	Extract vectors from the model
+_This will download bert_large_cased and its vocab for testing. Cased models are preferred for self-supervised NER since they can distinguish terms like eGFR from EFGR._
+	
+_Refer to huggingface model repository for other model URLs._
+
+**Step 1b:** Extract vectors from the model
 	
 	python examine_model.py 2 > bert_vectors.txt	
 
-**Step 1c:** Execute run.sh and then choose option 1 to create cluster file adaptive_debug_pivots.txt. *If the intent is to do NER for custom entity types, replace bootstrap_entities.txt with the entity types of the subset of the terms of interest present in the  vocabulary of the model being used for NER. Update bootstrap_entities.txt file before clutering*
+**Step 1c:** Cluster BERT vocab vectors and generate entity signatures
+	
+	Execute run.sh with option 6
 
-**Step 1d:** Run 
 
-./extract_labels.sh 
-
-*This generate labels.txt and stats_dict.txt which is copied to results directory for use in the NER service mentioned below.*
+_The output of this is bootstrap_entities.txt with entity signature generated for each term in the vocabulary including subwords. This can then be used for self-supervised [NER](https://github.com/ajitrajasekharan/unsupervised_NER.git) 
 
 
 Additionally 
@@ -120,17 +118,10 @@ In essence clustering reorders the manuaally labeled entities for a term into th
 
 ### Bootstrap labeling for NER file generartion.
 
-To create bootstrap_entities.txt file from the manually labeled terms, 
-
-1) Create bert_vectors.txt  
-
-python examine_model.py 2 > bert_vectors.txt
-
-2) execute run.sh with option 6.
 
 When starting in a new domain with no labels, start with an empty labels.txt and bootstrap_entities.txt.  Cluster (run.sh with option 6). Add this to bootstrap_entities.txt list and repeat. 
 
-When we start from sracth for a new domain we would need to label some terms as shown in this repo.
+When we start from scratch for a new domain we would need to label some terms as shown in this repo. A sample set is available for biomedical/phi/legal domain in  [NER](https://github.com/ajitrajasekharan/unsupervised_NER.git) 
 
 # License
 
