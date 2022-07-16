@@ -6,7 +6,7 @@ import subprocess
 import numpy as  np
 import json
 import math
-from transformers import *
+from transformers import BertTokenizer
 import sys
 import random
 import time
