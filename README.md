@@ -80,7 +80,8 @@ To examine the cosine values as well as bias values with output vectors *(which 
 
 ### Revision notes
 
-Jan 2022 
+**Jan 2022**
+
 This release magnifies the bootstrap labeling using clusterin and also includes subword labeling.
 
 The bootstrap file sample after clustering looks like this 
@@ -90,7 +91,7 @@ GENE/PROTEIN/ENZYME/DRUG/PROTEIN_FAMILY/MOUSE_GENE/DISEASE/RECEPTOR/BIO_MOLECULE
 DISEASE/GENE/UNTAGGED_ENTITY/LAB_PROCEDURE/MEASURE/PROTEIN/DRUG/RECEPTOR/DIAGNOSTIC_PROCEDURE/THERAPEUTIC_OR_PREVENTIVE_PROCEDURE/METABOLITE/SURGICAL_AND_MEDICAL_PROCEDURES/ORGAN_OR_TISSUE_FUNCTION/ORGANIZATION/CHEMICAL_SUBSTANCE/BODY_PART_OR_ORGAN_COMPONENT/LAB_TEST_COMPONENT/DISEASE_ADJECTIVE/ENZYME/PROTEIN_FAMILY/CELL_LINE/MOUSE_GENE/LOCATION/VIRUS/PERSON/MEDICAL_DEVICE/ESTABLISHED_PHARMACOLOGIC_CLASS/CELL/PRODUCT/TIME/HAZARDOUS_OR_POISONOUS_SUBSTANCE/HORMONE/DRUG_ADJECTIVE/MOUSE_PROTEIN_FAMILY/BIO/PHYSIOLOGIC_FUNCTION/CELL_FUNCTION/STUDY/SOCIAL_CIRCUMSTANCES/VIRAL_PROTEIN/CONGENITAL_ABNORMALITY/BIO_MOLECULE/BODY_SUBSTANCE/CELL_COMPONENT/BODY_LOCATION_OR_REGION/CHEMICAL_CLASS/ORGANISM_FUNCTION/BACTERIUM/MENTAL_OR_BEHAVIORAL_DYSFUNCTION/DEVICE/NUCLEOTIDE_SEQUENCE/VITAMIN/SPORT/CELL_OR_MOLECULAR_DYSFUNCTION/PRODUCT_ADJECTIVE/ORGANIZATION_ADJECTIVE/SEQUENCE/EDU 224/195/156/146/119/115/103/69/62/50/48/46/45/44/40/35/29/28/26/25/20/18/17/16/14/11/11/10/9/8/8/7/7/6/6/5/5/5/5/5/5/4/4/4/3/3/3/3/3/3/2/2/1/1/1/1/1/1 eGFR
 
 
-17 Sept 2021
+**17 Sept 2021**
 
 The original labeling of vocab file terms was reduced by just labeling cluster pivots by manually looking at the clusters the pivots belong to. For example PERSON or PERSON/LOCATION etc.
 
@@ -119,7 +120,13 @@ In essence clustering reorders the manuaally labeled entities for a term into th
 
 ### Bootstrap labeling for NER file generartion.
 
-To create bootstrap_entities.txt file from the manually labeled terms, execute run.sh with option 6.
+To create bootstrap_entities.txt file from the manually labeled terms, 
+
+1) Create bert_vectors.txt  
+
+python examine_model.py 2 > bert_vectors.txt
+
+2) execute run.sh with option 6.
 
 When starting in a new domain with no labels, start with an empty labels.txt and bootstrap_entities.txt.  Cluster (run.sh with option 6). Add this to bootstrap_entities.txt list and repeat. 
 
